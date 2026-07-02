@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Solid green shape used as the Android 12+ splash icon so it blends
+     into the green splash background and is effectively invisible. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/launch_background_color" />
+</shape>
