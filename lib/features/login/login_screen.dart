@@ -252,8 +252,12 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
-    final screenHeight = mq.size.height;
+    // Use sizeOf (not MediaQuery.of) so this screen does NOT rebuild the whole
+    // card Stack on every keyboard-animation frame. With
+    // resizeToAvoidBottomInset:false the size never changes when the keyboard
+    // opens, so this rebuilds only on real size changes (e.g. rotation). Each
+    // card handles the keyboard itself via MediaQuery.viewInsetsOf.
+    final screenHeight = MediaQuery.sizeOf(context).height;
     final loginHeight = screenHeight * _loginHeightFactor;
     final signUpHeight = screenHeight * _signUpHeightFactor;
     final forgotHeight = screenHeight * _forgotHeightFactor;
@@ -317,13 +321,7 @@ class _LoginScreenState extends State<LoginScreen>
       // keyboard internally by scrolling only its own contents up.
       resizeToAvoidBottomInset: false,
       body: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [AppColors.gradientTop, AppColors.gradientBottom],
-          ),
-        ),
+        decoration: const BoxDecoration(color: AppColors.primary),
         child: AnimatedBuilder(
           animation: Listenable.merge(
             [

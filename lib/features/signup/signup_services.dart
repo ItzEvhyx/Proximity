@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/email/otp_mailer.dart';
@@ -146,9 +145,7 @@ class SignUpService {
         code: code,
         firstName: cleanFirstName,
       );
-    } catch (e, st) {
-      debugPrint('OTP email send failed: $e');
-      debugPrint('$st');
+    } catch (_) {
       return const StartSignUpResult(
         status: OtpSendStatus.sendFailed,
         message: 'We could not send the verification email. '
@@ -176,9 +173,7 @@ class SignUpService {
 
     try {
       await _sendOtpEmail(toEmail: email, code: code, firstName: firstName);
-    } catch (e, st) {
-      debugPrint('OTP email resend failed: $e');
-      debugPrint('$st');
+    } catch (_) {
       return const StartSignUpResult(
         status: OtpSendStatus.sendFailed,
         message: 'We could not resend the email. Please try again.',
@@ -219,19 +214,16 @@ class SignUpService {
         );
       }
 
-      // The profile insert is governed by RLS (`auth.uid() = id`), so we need
-      // an authenticated session. If sign-up didn't return one (e.g. Supabase
-      // "Confirm email" is enabled), sign in with the password to establish it
-      // before writing the profile row.
+      // The profile insert is governed by RLS (auth.uid() = id), so a session
+      // is required. If sign-up didn't return one, sign in with the password
+      // to establish it before writing the profile row.
       if (!_repo.hasSession) {
         try {
           await _repo.signInWithPassword(
             email: _pendingEmail!,
             password: _pendingPassword!,
           );
-        } on AuthException catch (e) {
-          debugPrint('Post-sign-up sign-in failed: ${e.message}');
-        }
+        } on AuthException catch (_) {}
       }
 
       try {
@@ -242,9 +234,8 @@ class SignUpService {
           email: _pendingEmail!,
         );
       } on PostgrestException catch (e) {
-        // A duplicate (23505) means the row already exists — treat as done.
+        // 23505 = duplicate; the row already exists, so treat it as done.
         if (e.code != '23505') {
-          debugPrint('Profile upsert failed: ${e.code} ${e.message}');
           return const VerifyResult(
             status: OtpVerifyStatus.failure,
             message: 'Your account was created but we could not save your '

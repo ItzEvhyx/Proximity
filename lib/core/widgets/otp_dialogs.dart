@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import 'diamond_loader.dart';
 
 /// Blocking loading modal used while the OTP is being sent or verified.
 /// Matches the app style: white rounded card, bold green title, a spinning
@@ -41,7 +42,7 @@ Future<void> showOtpLoadingDialog(
                 ),
               ),
               const SizedBox(height: 24),
-              const _DiamondLoader(),
+              const DiamondLoader(),
               const SizedBox(height: 24),
               Text(
                 subtitle,
@@ -149,62 +150,4 @@ Future<void> showOtpSuccessDialog(
   );
 }
 
-/// A green diamond (rotated square) outline that spins continuously.
-class _DiamondLoader extends StatefulWidget {
-  const _DiamondLoader();
 
-  @override
-  State<_DiamondLoader> createState() => _DiamondLoaderState();
-}
-
-class _DiamondLoaderState extends State<_DiamondLoader>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _scale;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1400),
-    )..repeat();
-    // Pulse smaller then back to full size once per rotation.
-    _scale = TweenSequence<double>([
-      TweenSequenceItem(
-        tween: Tween(begin: 1.0, end: 0.65)
-            .chain(CurveTween(curve: Curves.easeInOut)),
-        weight: 50,
-      ),
-      TweenSequenceItem(
-        tween: Tween(begin: 0.65, end: 1.0)
-            .chain(CurveTween(curve: Curves.easeInOut)),
-        weight: 50,
-      ),
-    ]).animate(_controller);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return RotationTransition(
-      turns: _controller,
-      child: ScaleTransition(
-        scale: _scale,
-        child: Container(
-          height: 64,
-          width: 64,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.primary, width: 3),
-          ),
-        ),
-      ),
-    );
-  }
-}

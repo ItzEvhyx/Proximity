@@ -137,9 +137,8 @@ class _PasswordResetCardState extends State<PasswordResetCard> {
 
   @override
   Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
-    final bottomPadding = mq.padding.bottom;
-    final keyboardHeight = mq.viewInsets.bottom;
+    final bottomPadding = MediaQuery.paddingOf(context).bottom;
+    final keyboardHeight = MediaQuery.viewInsetsOf(context).bottom;
 
     return Container(
       width: double.infinity,

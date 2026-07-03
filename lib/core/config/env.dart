@@ -29,6 +29,10 @@ class Env {
   /// username and the "from" address on OTP emails.
   static String get gmailSenderEmail => _require('GMAIL_SENDER_EMAIL');
 
+  /// Google Web OAuth client ID, used as the serverClientId for native Google
+  /// sign-in so Supabase can verify the returned ID token.
+  static String get googleWebClientId => _require('GOOGLE_WEB_CLIENT_ID');
+
   /// Reads [key] from the loaded env, throwing a clear error if it is missing
   /// so misconfiguration surfaces immediately instead of failing later.
   static String _require(String key) {

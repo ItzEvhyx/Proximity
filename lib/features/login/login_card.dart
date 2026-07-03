@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../core/router/app_router.dart';
 import '../../core/theme/app_colors.dart';
+import 'login_services.dart';
+import 'login_validator.dart';
 
 /// White login card that spans the bottom of the screen with large rounded
 /// top corners. The card is anchored by its parent; only its inner content
@@ -25,6 +28,15 @@ class _LoginCardState extends State<LoginCard> {
   final TextEditingController _passwordController = TextEditingController();
   bool _obscurePassword = true;
 
+  final LoginService _loginService = LoginService();
+
+  bool _isLoggingIn = false;
+  bool _isGoogleLoading = false;
+
+  String? _emailError;
+  String? _passwordError;
+  String? _googleError;
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -32,11 +44,76 @@ class _LoginCardState extends State<LoginCard> {
     super.dispose();
   }
 
+  Future<void> _onLoginPressed() async {
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _isLoggingIn = true;
+      _emailError = null;
+      _passwordError = null;
+      _googleError = null;
+    });
+
+    final result = await _loginService.loginWithEmail(
+      email: _emailController.text,
+      password: _passwordController.text,
+    );
+    if (!mounted) return;
+    setState(() {
+      _isLoggingIn = false;
+      _emailError = result.fieldErrors[LoginField.email];
+      _passwordError = result.fieldErrors[LoginField.password];
+    });
+
+    if (result.isSuccess) {
+      _goAfterLogin();
+    } else if (result.status == LoginStatus.failure) {
+      _showSnack(result.message ?? 'Something went wrong.');
+    }
+  }
+
+  Future<void> _onGooglePressed() async {
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _isGoogleLoading = true;
+      _googleError = null;
+      _emailError = null;
+      _passwordError = null;
+    });
+
+    final result = await _loginService.loginWithGoogle();
+    if (!mounted) return;
+    setState(() => _isGoogleLoading = false);
+
+    switch (result.status) {
+      case LoginStatus.success:
+        _goAfterLogin();
+      case LoginStatus.googleCancelled:
+        break; // user backed out — no error
+      default:
+        setState(() => _googleError = result.message ?? 'Google sign-in failed.');
+    }
+  }
+
+  void _goAfterLogin() {
+    Navigator.of(context).pushReplacement(AppRouter.afterLogin());
+  }
+
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.redAccent,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
-    final bottomPadding = mq.padding.bottom;
-    final keyboardHeight = mq.viewInsets.bottom;
+    // Targeted accessors: only rebuild for padding/keyboard changes, not every
+    // MediaQuery change.
+    final bottomPadding = MediaQuery.paddingOf(context).bottom;
+    final keyboardHeight = MediaQuery.viewInsetsOf(context).bottom;
 
     return Container(
       width: double.infinity,
@@ -71,6 +148,7 @@ class _LoginCardState extends State<LoginCard> {
               hintText: 'Enter Email...',
               icon: Icons.mail_outline,
               keyboardType: TextInputType.emailAddress,
+              errorText: _emailError,
             ),
             const SizedBox(height: 16),
             _fieldLabel('Password'),
@@ -80,6 +158,7 @@ class _LoginCardState extends State<LoginCard> {
               hintText: 'Enter Password...',
               icon: Icons.lock_outline,
               obscureText: _obscurePassword,
+              errorText: _passwordError,
               suffix: IconButton(
                 splashRadius: 20,
                 onPressed: () =>
@@ -116,6 +195,18 @@ class _LoginCardState extends State<LoginCard> {
             _buildDivider(),
             const SizedBox(height: 18),
             _buildSocialButtons(),
+            if (_googleError != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                _googleError!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  color: Colors.redAccent,
+                  fontSize: 12.5,
+                ),
+              ),
+            ],
             const SizedBox(height: 22),
             _buildSignUpPrompt(),
           ],
@@ -144,10 +235,15 @@ class _LoginCardState extends State<LoginCard> {
     bool obscureText = false,
     Widget? suffix,
     TextInputType? keyboardType,
+    String? errorText,
   }) {
     const border = OutlineInputBorder(
       borderRadius: BorderRadius.all(Radius.circular(14)),
       borderSide: BorderSide(color: AppColors.primary, width: 1.5),
+    );
+    const errorBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.all(Radius.circular(14)),
+      borderSide: BorderSide(color: Colors.redAccent, width: 1.5),
     );
     return TextField(
       controller: controller,
@@ -169,8 +265,13 @@ class _LoginCardState extends State<LoginCard> {
         prefixIcon: Icon(icon, color: AppColors.textDark, size: 24),
         suffixIcon: suffix,
         contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 6),
+        errorText: errorText,
+        errorMaxLines: 2,
+        errorStyle: const TextStyle(fontFamily: 'Inter', fontSize: 12),
         enabledBorder: border,
         focusedBorder: border,
+        errorBorder: errorBorder,
+        focusedErrorBorder: errorBorder,
         border: border,
       ),
     );
@@ -181,23 +282,34 @@ class _LoginCardState extends State<LoginCard> {
       width: double.infinity,
       height: 56,
       child: ElevatedButton(
-        onPressed: () {},
+        onPressed: _isLoggingIn ? null : _onLoginPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
+          disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.6),
+          disabledForegroundColor: Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
         ),
-        child: const Text(
-          'Log In',
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
+        child: _isLoggingIn
+            ? const SizedBox(
+                height: 24,
+                width: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: Colors.white,
+                ),
+              )
+            : const Text(
+                'Log In',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
       ),
     );
   }
@@ -230,6 +342,8 @@ class _LoginCardState extends State<LoginCard> {
           child: _socialButton(
             label: 'Google',
             assetPath: 'public/assets/icons/google_icon.png',
+            onPressed: _isGoogleLoading ? null : _onGooglePressed,
+            loading: _isGoogleLoading,
           ),
         ),
         const SizedBox(width: 14),
@@ -237,17 +351,23 @@ class _LoginCardState extends State<LoginCard> {
           child: _socialButton(
             label: 'Facebook',
             assetPath: 'public/assets/icons/facebook_icon.png',
+            onPressed: () {},
           ),
         ),
       ],
     );
   }
 
-  Widget _socialButton({required String label, required String assetPath}) {
+  Widget _socialButton({
+    required String label,
+    required String assetPath,
+    required VoidCallback? onPressed,
+    bool loading = false,
+  }) {
     return SizedBox(
       height: 54,
       child: OutlinedButton(
-        onPressed: () {},
+        onPressed: onPressed,
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.textDark,
           side: const BorderSide(color: AppColors.primary, width: 1.5),
@@ -256,26 +376,35 @@ class _LoginCardState extends State<LoginCard> {
           ),
           padding: const EdgeInsets.symmetric(horizontal: 8),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.asset(assetPath, height: 22, width: 22),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                label,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontFamily: 'Poppins',
-                  color: AppColors.textDark,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 15,
+        child: loading
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: AppColors.primary,
                 ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image.asset(assetPath, height: 22, width: 22),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      label,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        color: AppColors.textDark,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }

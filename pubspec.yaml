@@ -17,6 +17,8 @@ dependencies:
   supabase_flutter: ^2.15.3
   flutter_dotenv: ^6.0.1
   mailer: ^7.1.0
+  google_sign_in: 6.2.1
+  shared_preferences: ^2.5.5
 
 dev_dependencies:
   flutter_test:

@@ -1,0 +1,41 @@
+import 'package:shared_preferences/shared_preferences.dart';
+
+/// Local, offline-first key/value storage backed by SharedPreferences.
+///
+/// Holds the small amount of state the app needs to decide where to route the
+/// user at launch — without a network call:
+///  • whether the one-time onboarding (contribution/welcome) flow was seen, and
+///  • the id of the currently logged-in user, so they stay logged in across
+///    app restarts.
+///
+/// Call [init] once in `main()` before `runApp`.
+class AppPrefs {
+  const AppPrefs._();
+
+  static late final SharedPreferences _prefs;
+
+  static const String _kOnboarded = 'has_completed_onboarding';
+  static const String _kUserId = 'logged_in_user_id';
+
+  static Future<void> init() async {
+    _prefs = await SharedPreferences.getInstance();
+  }
+
+  // ── Onboarding ─────────────────────────────────────────────────────────────
+  /// True once the user has seen the one-time contribution/welcome flow. New
+  /// installs start false, so only a brand-new user is shown that screen.
+  static bool get hasCompletedOnboarding => _prefs.getBool(_kOnboarded) ?? false;
+
+  static Future<void> setOnboardingComplete() =>
+      _prefs.setBool(_kOnboarded, true);
+
+  // ── Logged-in user ──────────────────────────────────────────────────────────
+  /// The id of the currently logged-in user, or null when logged out. Each
+  /// user has a unique id, so switching accounts simply overwrites this.
+  static String? get loggedInUserId => _prefs.getString(_kUserId);
+
+  static Future<void> setLoggedInUserId(String id) =>
+      _prefs.setString(_kUserId, id);
+
+  static Future<void> clearLoggedInUserId() => _prefs.remove(_kUserId);
+}

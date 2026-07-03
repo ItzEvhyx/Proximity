@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/otp_dialogs.dart';
+import '../../core/widgets/password_requirements.dart';
 import 'forgot_password_service.dart';
 
 /// White "set a new password" card shown after the forgot-password OTP has
@@ -39,11 +40,27 @@ class _EnterNewPasswordCardState extends State<EnterNewPasswordCard> {
   bool _obscureConfirm = true;
   bool _isBusy = false;
 
+  // Requirements panel appears once the user starts typing a password.
+  bool _showRequirements = false;
+
   String? _passwordError;
   String? _confirmError;
 
   @override
+  void initState() {
+    super.initState();
+    _passwordController.addListener(_onPasswordChanged);
+  }
+
+  void _onPasswordChanged() {
+    final shouldShow = _passwordController.text.isNotEmpty;
+    // Rebuild so the checklist updates live (and toggles visibility).
+    setState(() => _showRequirements = shouldShow);
+  }
+
+  @override
   void dispose() {
+    _passwordController.removeListener(_onPasswordChanged);
     _passwordController.dispose();
     _confirmController.dispose();
     super.dispose();
@@ -99,9 +116,8 @@ class _EnterNewPasswordCardState extends State<EnterNewPasswordCard> {
 
   @override
   Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
-    final bottomPadding = mq.padding.bottom;
-    final keyboardHeight = mq.viewInsets.bottom;
+    final bottomPadding = MediaQuery.paddingOf(context).bottom;
+    final keyboardHeight = MediaQuery.viewInsetsOf(context).bottom;
 
     return Container(
       width: double.infinity,
@@ -171,6 +187,19 @@ class _EnterNewPasswordCardState extends State<EnterNewPasswordCard> {
                       onToggle: () => setState(
                           () => _obscurePassword = !_obscurePassword),
                       errorText: _passwordError,
+                    ),
+                    // Live password requirements (appear while typing).
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOutCubic,
+                      child: _showRequirements
+                          ? Padding(
+                              padding: const EdgeInsets.only(top: 12),
+                              child: PasswordRequirements(
+                                password: _passwordController.text,
+                              ),
+                            )
+                          : const SizedBox.shrink(),
                     ),
                     const SizedBox(height: 16),
                     _fieldLabel('Confirm New Password'),

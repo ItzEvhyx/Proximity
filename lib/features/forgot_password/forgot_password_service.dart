@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-
 import '../../core/email/otp_mailer.dart';
 import '../signup/signup_validator.dart';
 import 'forgot_password_repo.dart';
@@ -99,9 +97,7 @@ class ForgotPasswordService {
 
     try {
       await _sendResetEmail(cleanEmail, code);
-    } catch (e, st) {
-      debugPrint('Reset OTP send failed: $e');
-      debugPrint('$st');
+    } catch (_) {
       return const StartResetResult(
         status: ResetSendStatus.sendFailed,
         message: 'We could not send the reset email. '
@@ -125,9 +121,7 @@ class ForgotPasswordService {
     _otpExpiresAt = DateTime.now().add(_otpTtl);
     try {
       await _sendResetEmail(email, code);
-    } catch (e, st) {
-      debugPrint('Reset OTP resend failed: $e');
-      debugPrint('$st');
+    } catch (_) {
       return const StartResetResult(
         status: ResetSendStatus.sendFailed,
         message: 'We could not resend the email. Please try again.',
@@ -185,9 +179,7 @@ class ForgotPasswordService {
         email: _pendingEmail!,
         newPassword: newPassword,
       );
-    } catch (e, st) {
-      debugPrint('Password update failed: $e');
-      debugPrint('$st');
+    } catch (_) {
       return const ResetCompleteResult(
         status: ResetCompleteStatus.failure,
         message: 'We could not update your password. Please try again.',
