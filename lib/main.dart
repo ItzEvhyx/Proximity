@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:video_player/video_player.dart';
 
 import 'core/animations/screen_transitions.dart';
@@ -18,6 +19,10 @@ Future<void> main() async {
   // Load secrets from .env.local, then connect to Supabase before the app
   // runs so the client is ready for any query later on.
   await Env.load();
+
+  // Hand the Mapbox Maps SDK its public token so map tiles can load.
+  MapboxOptions.setAccessToken(Env.mapboxPublicToken);
+
   await initSupabase();
 
   // Local storage for offline-first routing (logged-in state + onboarding),

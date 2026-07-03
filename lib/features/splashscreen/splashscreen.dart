@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../core/theme/app_colors.dart';
+
 /// Full-screen video splash shown right after the native splash screen.
 ///
 /// The controller is initialized in `main()` before the first frame so the
@@ -53,7 +55,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF019D43),
+      backgroundColor: AppColors.primary,
       body: SizedBox.expand(
         child: FittedBox(
           fit: BoxFit.cover,

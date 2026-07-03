@@ -33,6 +33,10 @@ class Env {
   /// sign-in so Supabase can verify the returned ID token.
   static String get googleWebClientId => _require('GOOGLE_WEB_CLIENT_ID');
 
+  /// Mapbox public access token (starts with "pk."), passed to the Maps SDK
+  /// at start-up so it can load map tiles.
+  static String get mapboxPublicToken => _require('MAPBOX_PUBLIC_TOKEN');
+
   /// Reads [key] from the loaded env, throwing a clear error if it is missing
   /// so misconfiguration surfaces immediately instead of failing later.
   static String _require(String key) {

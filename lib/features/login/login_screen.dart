@@ -560,7 +560,7 @@ class _AuthHeader extends StatelessWidget {
                 offset: const Offset(3, 3),
                 child: const _TitleBlock(color: AppColors.titleShadow),
               ),
-              const _TitleBlock(color: Colors.white),
+              const _TitleBlock(color: AppColors.white),
             ],
           ),
           const SizedBox(height: 4),
@@ -569,7 +569,7 @@ class _AuthHeader extends StatelessWidget {
             style: TextStyle(
               fontFamily: 'Inter',
               fontWeight: FontWeight.w300,
-              color: Colors.white,
+              color: AppColors.white,
               fontSize: 13.5,
             ),
           ),

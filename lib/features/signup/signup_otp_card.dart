@@ -83,7 +83,6 @@ class _SignUpOtpCardState extends State<SignUpOtpCard> {
     showOtpLoadingDialog(context, title: 'Verifying OTP');
     final result = await widget.service.verifyOtpAndComplete(_code);
     if (!mounted) return;
-    // Dismiss the loading modal.
     Navigator.of(context, rootNavigator: true).pop();
 
     setState(() => _isBusy = false);
@@ -129,7 +128,7 @@ class _SignUpOtpCardState extends State<SignUpOtpCard> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? Colors.redAccent : AppColors.primary,
+        backgroundColor: isError ? AppColors.error : AppColors.primary,
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -143,7 +142,7 @@ class _SignUpOtpCardState extends State<SignUpOtpCard> {
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: AppColors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       clipBehavior: Clip.antiAlias,
@@ -313,9 +312,9 @@ class _SignUpOtpCardState extends State<SignUpOtpCard> {
         onPressed: _isBusy ? null : _onConfirm,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
+          foregroundColor: AppColors.white,
           disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.6),
-          disabledForegroundColor: Colors.white,
+          disabledForegroundColor: AppColors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),

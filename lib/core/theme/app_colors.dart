@@ -1,21 +1,18 @@
 import 'package:flutter/material.dart';
 
-/// Central palette for the app. Tweak these to adjust the brand greens
-/// everywhere at once.
+/// Central color palette. Change a value here to update it across the app.
 class AppColors {
   const AppColors._();
 
-  /// Background / primary brand green (exact design hex #019D43). This is the
-  /// dominant color you should see across green surfaces.
+  // ── Brand greens ──────────────────────────────────────────────────────
+  /// Dominant brand green (#019D43) used across all green surfaces.
   static const Color primary = Color(0xFF019D43);
 
-  /// Darker green used only for a subtle fade at the very top of green screens.
+  /// Darker green for the subtle fade at the top of green screens.
   static const Color greenDark = Color(0xFF009232);
 
-  /// Vertical background gradient shared by all green screens. The darker green
-  /// is confined to the top ~18% so the rest of the screen is solid [primary]
-  /// (#019D43) — i.e. the visible green matches the design instead of reading
-  /// as the darker fade colour.
+  /// Vertical background gradient for green screens; the darker green is
+  /// confined to the top ~18% so the rest reads as solid [primary].
   static const LinearGradient greenBackground = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
@@ -23,14 +20,23 @@ class AppColors {
     stops: [0.0, 0.18],
   );
 
-  /// Kept for existing references (top/bottom of the green gradient).
-  static const Color gradientTop = greenDark;
-  static const Color gradientBottom = primary;
-
-  /// Solid (non-blurred) backdrop shadow behind the title/logo.
+  /// Solid backdrop shadow behind the title/logo.
   static const Color titleShadow = Color(0xFF046A2C);
 
+  // ── Neutrals ──────────────────────────────────────────────────────────
+  static const Color white = Color(0xFFFFFFFF);
   static const Color textDark = Color(0xFF111111);
   static const Color textGrey = Color(0xFF7A7A7A);
   static const Color hintGrey = Color(0xFF9E9E9E);
+
+  /// Muted fill and hairline border for panels (e.g. password checklist).
+  static const Color surfaceMuted = Color(0xFFF6F6F6);
+  static const Color border = Color(0xFFE0E0E0);
+
+  // ── Feedback / overlay ─────────────────────────────────────────────────
+  /// Error accent for invalid fields and error snackbars (Colors.redAccent).
+  static const Color error = Color(0xFFFF5252);
+
+  /// Dialog barrier scrim (Colors.black26).
+  static const Color scrim = Color(0x42000000);
 }

@@ -129,7 +129,7 @@ class _PasswordResetCardState extends State<PasswordResetCard> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? Colors.redAccent : AppColors.primary,
+        backgroundColor: isError ? AppColors.error : AppColors.primary,
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -143,13 +143,12 @@ class _PasswordResetCardState extends State<PasswordResetCard> {
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: AppColors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       clipBehavior: Clip.antiAlias,
-      // Reserve the keyboard height at the bottom so the scroll viewport ends
-      // right above the keyboard. The card frame itself stays anchored to the
-      // bottom; only its inner contents scroll up to clear the keyboard.
+      // Reserve the keyboard height so the scroll viewport ends above it; the
+      // card frame stays anchored while only its contents scroll up.
       child: Padding(
         padding: EdgeInsets.only(bottom: keyboardHeight),
         child: Column(
@@ -259,7 +258,6 @@ class _PasswordResetCardState extends State<PasswordResetCard> {
         Expanded(child: _otpBox(1)),
         const SizedBox(width: 8),
         Expanded(child: _otpBox(2)),
-        // Center dash separator.
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 8),
           child: Text(
@@ -294,7 +292,6 @@ class _PasswordResetCardState extends State<PasswordResetCard> {
         textAlign: TextAlign.center,
         keyboardType: TextInputType.number,
         maxLength: 1,
-        // Only digits, single character.
         inputFormatters: [
           FilteringTextInputFormatter.digitsOnly,
           LengthLimitingTextInputFormatter(1),
@@ -326,9 +323,9 @@ class _PasswordResetCardState extends State<PasswordResetCard> {
         onPressed: _isBusy ? null : _onConfirm,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
+          foregroundColor: AppColors.white,
           disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.6),
-          disabledForegroundColor: Colors.white,
+          disabledForegroundColor: AppColors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),

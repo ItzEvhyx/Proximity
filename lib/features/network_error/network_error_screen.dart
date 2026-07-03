@@ -30,7 +30,7 @@ class _NetworkErrorScreenState extends State<NetworkErrorScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Still no connection. Please try again.'),
-          backgroundColor: Colors.redAccent,
+          backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -44,7 +44,7 @@ class _NetworkErrorScreenState extends State<NetworkErrorScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.white,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -126,9 +126,9 @@ class _NetworkErrorScreenState extends State<NetworkErrorScreen> {
         onPressed: _checking ? null : _onTryAgain,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
+          foregroundColor: AppColors.white,
           disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.6),
-          disabledForegroundColor: Colors.white,
+          disabledForegroundColor: AppColors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
@@ -140,7 +140,7 @@ class _NetworkErrorScreenState extends State<NetworkErrorScreen> {
                 width: 22,
                 child: CircularProgressIndicator(
                   strokeWidth: 2.5,
-                  color: Colors.white,
+                  color: AppColors.white,
                 ),
               )
             : const Row(

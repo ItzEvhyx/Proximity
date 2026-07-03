@@ -65,7 +65,6 @@ class _SignUpCardState extends State<SignUpCard> {
     if (shouldShow != _showRequirements) {
       setState(() => _showRequirements = shouldShow);
     } else {
-      // Refresh the requirement indicators as the user types.
       setState(() {});
     }
   }
@@ -120,7 +119,7 @@ class _SignUpCardState extends State<SignUpCard> {
       confirmPassword: _confirmPasswordController.text,
     );
     if (!mounted) return;
-    Navigator.of(context, rootNavigator: true).pop(); // dismiss loading
+    Navigator.of(context, rootNavigator: true).pop();
 
     setState(() {
       _isSubmitting = false;
@@ -147,7 +146,7 @@ class _SignUpCardState extends State<SignUpCard> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? Colors.redAccent : AppColors.primary,
+        backgroundColor: isError ? AppColors.error : AppColors.primary,
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -161,13 +160,12 @@ class _SignUpCardState extends State<SignUpCard> {
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: AppColors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       clipBehavior: Clip.antiAlias,
-      // Reserve the keyboard height at the bottom so the scroll viewport ends
-      // right above the keyboard. The card frame itself stays anchored to the
-      // bottom; only its inner contents scroll up to clear the keyboard.
+      // Reserve the keyboard height so the scroll viewport ends above it; the
+      // card frame stays anchored while only its contents scroll up.
       child: Padding(
         padding: EdgeInsets.only(bottom: keyboardHeight),
         child: Column(
@@ -367,7 +365,7 @@ class _SignUpCardState extends State<SignUpCard> {
     );
     const errorBorder = OutlineInputBorder(
       borderRadius: BorderRadius.all(Radius.circular(14)),
-      borderSide: BorderSide(color: Colors.redAccent, width: 1.5),
+      borderSide: BorderSide(color: AppColors.error, width: 1.5),
     );
     return TextField(
       controller: controller,
@@ -412,9 +410,9 @@ class _SignUpCardState extends State<SignUpCard> {
         onPressed: _isSubmitting ? null : _onSignUpPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
+          foregroundColor: AppColors.white,
           disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.6),
-          disabledForegroundColor: Colors.white,
+          disabledForegroundColor: AppColors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -426,7 +424,7 @@ class _SignUpCardState extends State<SignUpCard> {
                 width: 24,
                 child: CircularProgressIndicator(
                   strokeWidth: 2.5,
-                  color: Colors.white,
+                  color: AppColors.white,
                 ),
               )
             : const Text(

@@ -17,11 +17,11 @@ Future<void> showOtpLoadingDialog(
   return showDialog<void>(
     context: context,
     barrierDismissible: false,
-    barrierColor: Colors.black26,
+    barrierColor: AppColors.scrim,
     builder: (_) => PopScope(
       canPop: false,
       child: Dialog(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.white,
         insetPadding: const EdgeInsets.symmetric(horizontal: 32),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(28),
@@ -71,9 +71,9 @@ Future<void> showOtpSuccessDialog(
   return showDialog<void>(
     context: context,
     barrierDismissible: false,
-    barrierColor: Colors.black26,
+    barrierColor: AppColors.scrim,
     builder: (dialogContext) => Dialog(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.white,
       insetPadding: const EdgeInsets.symmetric(horizontal: 32),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(28),
@@ -127,7 +127,7 @@ Future<void> showOtpSuccessDialog(
                     Navigator.of(dialogContext, rootNavigator: true).pop(),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
+                  foregroundColor: AppColors.white,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),

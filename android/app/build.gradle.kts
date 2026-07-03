@@ -6,7 +6,8 @@ plugins {
 
 android {
     namespace = "com.example.proximity"
-    compileSdk = flutter.compileSdkVersion
+    // Mapbox Maps SDK requires compiling against Android API 36 or later.
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

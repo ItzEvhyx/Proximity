@@ -46,7 +46,6 @@ class _ContributionScreenState extends State<ContributionScreen> {
         child: Container(
           width: double.infinity,
           height: double.infinity,
-          // Exact brand green (#019D43), same as every other green surface.
           decoration: const BoxDecoration(color: AppColors.primary),
           child: SafeArea(
             child: Padding(
@@ -60,7 +59,7 @@ class _ContributionScreenState extends State<ContributionScreen> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontFamily: 'Poppins',
-                      color: Colors.white,
+                      color: AppColors.white,
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
                     ),
@@ -77,13 +76,13 @@ class _ContributionScreenState extends State<ContributionScreen> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontFamily: 'Inter',
-                      color: Colors.white,
+                      color: AppColors.white,
                       fontSize: 14.5,
                       height: 1.4,
                     ),
                   ),
                   const SizedBox(height: 44),
-                  const DiamondLoader(color: Colors.white, size: 88),
+                  const DiamondLoader(color: AppColors.white, size: 88),
                 ],
               ),
             ),

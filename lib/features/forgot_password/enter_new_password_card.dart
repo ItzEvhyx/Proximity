@@ -108,7 +108,7 @@ class _EnterNewPasswordCardState extends State<EnterNewPasswordCard> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.redAccent,
+        backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -122,7 +122,7 @@ class _EnterNewPasswordCardState extends State<EnterNewPasswordCard> {
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: AppColors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       clipBehavior: Clip.antiAlias,
@@ -265,7 +265,7 @@ class _EnterNewPasswordCardState extends State<EnterNewPasswordCard> {
     );
     const errorBorder = OutlineInputBorder(
       borderRadius: BorderRadius.all(Radius.circular(14)),
-      borderSide: BorderSide(color: Colors.redAccent, width: 1.5),
+      borderSide: BorderSide(color: AppColors.error, width: 1.5),
     );
     return TextField(
       controller: controller,
@@ -318,9 +318,9 @@ class _EnterNewPasswordCardState extends State<EnterNewPasswordCard> {
         onPressed: _isBusy ? null : _onConfirm,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
+          foregroundColor: AppColors.white,
           disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.6),
-          disabledForegroundColor: Colors.white,
+          disabledForegroundColor: AppColors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
