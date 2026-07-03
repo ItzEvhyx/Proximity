@@ -135,7 +135,9 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer> {
   Widget build(BuildContext context) {
     return MapWidget(
       key: const ValueKey('ph-map'),
-      styleUri: MapboxStyles.MAPBOX_STREETS,
+      // Standard style shows POIs, place labels and 3D landmarks (Google
+      // Maps-like) rather than just streets.
+      styleUri: MapboxStyles.STANDARD,
       onMapCreated: _onMapCreated,
       onStyleLoadedListener: (_) {
         _styleLoaded = true;

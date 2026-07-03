@@ -8,7 +8,7 @@ import '../../../core/skeleton_loading/skeleton_loading.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/search_bar.dart';
 import 'tabs/history_tab.dart';
-import 'tabs/home_tab.dart';
+import 'tabs/maps_tab.dart';
 import 'tabs/profile_tab.dart';
 import 'tabs/routes_tab.dart';
 
@@ -60,7 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final showSearchBar = _tabIndex == 0 || _tabIndex == 1;
 
     final tabs = <Widget>[
-      HomeTab(onMapReady: _handleMapReady),
+      MapsTab(onMapReady: _handleMapReady),
       const RoutesTab(),
       const HistoryTab(),
       const ProfileTab(),
