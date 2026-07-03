@@ -2,11 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
 import 'core/animations/screen_transitions.dart';
+import 'core/config/env.dart';
+import 'core/supabase/supabase_client.dart';
 import 'features/login/login_screen.dart';
 import 'features/splashscreen/splashscreen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load secrets from .env.local, then connect to Supabase before the app
+  // runs so the client is ready for any query later on.
+  await Env.load();
+  await initSupabase();
 
   // Pre-load the splash video BEFORE the first frame is drawn. While this
   // awaits, no Flutter frame is rendered, so the native splash stays on screen.

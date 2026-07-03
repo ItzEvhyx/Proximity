@@ -1,6 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Required for Supabase / network requests (release builds don't get
+         this automatically the way debug builds do). -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="proximity"
+        android:label="Proximity"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

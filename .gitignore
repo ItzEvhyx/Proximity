@@ -1,3 +1,8 @@
+# Environment secrets (Supabase keys, etc.)
+.env
+.env.*
+!.env.example
+
 # Miscellaneous
 *.class
 *.log

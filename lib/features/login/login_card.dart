@@ -6,7 +6,15 @@ import '../../core/theme/app_colors.dart';
 /// top corners. The card is anchored by its parent; only its inner content
 /// scrolls when the keyboard opens.
 class LoginCard extends StatefulWidget {
-  const LoginCard({super.key});
+  const LoginCard({super.key, this.onSignUp, this.onForgotPassword});
+
+  /// Fired when the user taps the "Sign up" text. The parent screen owns the
+  /// login <-> sign up transition, so this card never navigates itself.
+  final VoidCallback? onSignUp;
+
+  /// Fired when the user taps "Forgot Password?". The parent screen owns the
+  /// login <-> forgot-password transition.
+  final VoidCallback? onForgotPassword;
 
   @override
   State<LoginCard> createState() => _LoginCardState();
@@ -37,23 +45,25 @@ class _LoginCardState extends State<LoginCard> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       clipBehavior: Clip.antiAlias,
-      child: SingleChildScrollView(
-        // Matches the reference behavior: clamped (no bounce) and the keyboard
-        // is dismissed when the user drags the content.
-        physics: const ClampingScrollPhysics(),
-        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-        // When the keyboard is open, add its height as bottom padding so the
-        // fields can scroll clear of it; otherwise just the safe area.
-        padding: EdgeInsets.only(
-          left: 24,
-          right: 24,
-          top: 30,
-          bottom: keyboardHeight > 0 ? keyboardHeight + 16 : 24 + bottomPadding,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
+      // Reserve the keyboard height at the bottom so the scroll viewport ends
+      // right above the keyboard. The card frame itself stays anchored to the
+      // bottom; only its inner contents scroll up to clear the keyboard.
+      child: Padding(
+        padding: EdgeInsets.only(bottom: keyboardHeight),
+        child: SingleChildScrollView(
+          // Clamped (no bounce); the keyboard is dismissed when the user drags.
+          physics: const ClampingScrollPhysics(),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 30,
+            bottom: 24 + bottomPadding,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
             _fieldLabel('Email'),
             const SizedBox(height: 8),
             _buildTextField(
@@ -83,7 +93,7 @@ class _LoginCardState extends State<LoginCard> {
             Align(
               alignment: Alignment.centerRight,
               child: TextButton(
-                onPressed: () {},
+                onPressed: widget.onForgotPassword,
                 style: TextButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 6),
                   minimumSize: Size.zero,
@@ -109,6 +119,7 @@ class _LoginCardState extends State<LoginCard> {
             const SizedBox(height: 22),
             _buildSignUpPrompt(),
           ],
+        ),
         ),
       ),
     );
@@ -284,7 +295,7 @@ class _LoginCardState extends State<LoginCard> {
             ),
           ),
           GestureDetector(
-            onTap: () {},
+            onTap: widget.onSignUp,
             child: const Text(
               'Sign up',
               style: TextStyle(

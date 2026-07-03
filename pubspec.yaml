@@ -14,6 +14,9 @@ dependencies:
   cupertino_icons: ^1.0.8
   video_player: ^2.11.1
   lottie: ^3.4.0
+  supabase_flutter: ^2.15.3
+  flutter_dotenv: ^6.0.1
+  mailer: ^7.1.0
 
 dev_dependencies:
   flutter_test:
@@ -40,6 +43,8 @@ flutter:
   # Assets bundled with the app. Flutter does not recurse into
   # subdirectories, so each folder that contains files is listed here.
   assets:
+    # Environment secrets loaded at runtime via flutter_dotenv.
+    - .env.local
     - public/assets/audio/
     - public/assets/audio/calming alarms/
     - public/assets/audio/intense alarms/
