@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/widgets/work_in_progress.dart';
+import '../../../../../core/widgets/work_in_progress.dart';
 
 /// Routes tab (not built yet).
 class RoutesTab extends StatelessWidget {

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/widgets/work_in_progress.dart';
+import '../../../../../core/widgets/work_in_progress.dart';
 
 /// History tab (not built yet).
 class HistoryTab extends StatelessWidget {

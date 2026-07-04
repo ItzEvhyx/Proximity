@@ -7,10 +7,12 @@ import '../../../core/navbar/navbar_widget.dart';
 import '../../../core/skeleton_loading/skeleton_loading.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/search_bar.dart';
-import 'tabs/history_tab.dart';
-import 'tabs/maps_tab.dart';
-import 'tabs/profile_tab.dart';
-import 'tabs/routes_tab.dart';
+import 'tabs/history_tab/history_tab.dart';
+import 'tabs/maps_tab/maps_controller.dart';
+import 'tabs/maps_tab/maps_tab.dart';
+import 'tabs/maps_tab/search_results_dropdown.dart';
+import 'tabs/profile_tab/profile_tab.dart';
+import 'tabs/routes_tab/routes_tab.dart';
 
 /// Home shell: hosts the four tabs behind the floating navbar, with a sliding
 /// tab transition.
@@ -33,9 +35,12 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _skeletonVisible = true;
   Timer? _readyTimeout;
 
+  late final MapsController _mapsController;
+
   @override
   void initState() {
     super.initState();
+    _mapsController = MapsController();
     // Safety net: reveal the UI even if the map never reports ready (e.g. no
     // network / stuck tiles) so the app is never stuck on the skeleton.
     _readyTimeout = Timer(const Duration(seconds: 8), _handleMapReady);
@@ -44,8 +49,10 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _readyTimeout?.cancel();
+    _mapsController.dispose();
     super.dispose();
   }
+
 
   void _handleMapReady() {
     if (_mapReady || !mounted) return;
@@ -60,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final showSearchBar = _tabIndex == 0 || _tabIndex == 1;
 
     final tabs = <Widget>[
-      MapsTab(onMapReady: _handleMapReady),
+      MapsTab(onMapReady: _handleMapReady, controller: _mapsController),
       const RoutesTab(),
       const HistoryTab(),
       const ProfileTab(),
@@ -68,13 +75,34 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.white,
+      // Keep the map, info card and navbar fixed when the keyboard opens; the
+      // keyboard overlays them instead of pushing the whole layout up.
+      resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
           Positioned.fill(
             child: TabsTransition(index: _tabIndex, children: tabs),
           ),
 
-          // Search bar (Maps/Routes only), revealed once the map is ready.
+          // Tap-away scrim: closes the search dropdown when tapping the map.
+          if (showSearchBar)
+            AnimatedBuilder(
+              animation: _mapsController,
+              builder: (context, _) {
+                if (!_mapsController.resultsVisible) {
+                  return const SizedBox.shrink();
+                }
+                return Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _mapsController.dismissResults,
+                  ),
+                );
+              },
+            ),
+
+          // Search bar + results dropdown (Maps/Routes only), revealed once the
+          // map is ready.
           if (showSearchBar)
             Positioned(
               top: topOffset,
@@ -85,7 +113,28 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: AnimatedOpacity(
                   opacity: _mapReady ? 1 : 0,
                   duration: _revealDuration,
-                  child: const LocationSearchBar(),
+                  child: AnimatedBuilder(
+                    animation: _mapsController,
+                    builder: (context, _) {
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          LocationSearchBar(
+                            controller: _mapsController.searchText,
+                            focusNode: _mapsController.searchFocus,
+                          ),
+                          if (_mapsController.resultsVisible)
+                            SearchResultsDropdown(
+                              results: _mapsController.results,
+                              loading: _mapsController.loading,
+                              showingNearby: _mapsController.showingNearby,
+                              error: _mapsController.error,
+                              onSelect: _mapsController.selectResult,
+                            ),
+                        ],
+                      );
+                    },
+                  ),
                 ),
               ),
             ),
