@@ -38,7 +38,44 @@ class MapsSearchService {
   static const String _geocodeV6Forward =
       'https://api.mapbox.com/search/geocode/v6/forward';
 
+  // OpenStreetMap Nominatim — used for specific street addresses, which it
+  // resolves with more granularity than Mapbox in the Philippines, and as a
+  // general fallback. Nominatim's usage policy requires a descriptive
+  // User-Agent identifying the app.
+  static const String _nominatimSearch =
+      'https://nominatim.openstreetmap.org/search';
+  static const String _nominatimReverse =
+      'https://nominatim.openstreetmap.org/reverse';
+  static const Map<String, String> _nominatimHeaders = {
+    'User-Agent': 'ProximityApp/1.0 (contact: support@proximity.app)',
+    'Accept': 'application/json',
+  };
+
   static final Random _random = Random();
+
+  /// Street-type keywords that signal a *specific* address (as opposed to a
+  /// general place / landmark). Matched case-insensitively as whole words.
+  static final RegExp _addressKeywords = RegExp(
+    r'\b(street|st|ave|avenue|road|rd|blvd|boulevard|drive|dr|lane|ln|'
+    r'highway|hwy|barangay|brgy|block|blk|lot|phase|subdivision|subd|'
+    r'unit|purok|sitio|corner|cor|extension|ext|compound)\b',
+    caseSensitive: false,
+  );
+
+  /// Leading house / building number, e.g. "123", "45-A", "12/3".
+  static final RegExp _leadingNumber = RegExp(r'^\s*\d');
+
+  /// Heuristic: does [query] look like a specific street address rather than a
+  /// general place name? Specific addresses (a house number and/or an explicit
+  /// street-type keyword) are routed to Nominatim; everything else (landmarks,
+  /// businesses, schools like "National University Manila") goes to Mapbox.
+  static bool looksLikeSpecificAddress(String query) {
+    final q = query.trim();
+    if (q.isEmpty) return false;
+    // An explicit street-type keyword ("Mabini Street", "Rizal Ave") or a
+    // leading house/building number ("123 Rizal") reads as a specific address.
+    return _addressKeywords.hasMatch(q) || _leadingNumber.hasMatch(q);
+  }
 
   /// Generates a UUIDv4-style session token used to group `/suggest` +
   /// `/retrieve` calls into one billable search session.
@@ -56,15 +93,15 @@ class MapsSearchService {
   Future<List<PlaceResult>> nearbyLandmarks({
     required double longitude,
     required double latitude,
-    int limit = 5,
-    int radiusMeters = 1500,
+    int limit = 25,
+    int radiusMeters = 1200,
   }) async {
     final uri = Uri.parse('$_tilequeryBase/$longitude,$latitude.json').replace(
       queryParameters: {
         'radius': '$radiusMeters',
-        // Over-fetch so we can drop unnamed features and de-dupe before taking
-        // the closest [limit].
-        'limit': '30',
+        // Over-fetch (Tilequery caps at 50) so that after dropping unnamed
+        // features and de-duping we still have a full, Google-Maps-like list.
+        'limit': '50',
         'dedupe': 'true',
         'layers': 'poi_label',
         'access_token': Env.mapboxPublicToken,
@@ -113,6 +150,54 @@ class MapsSearchService {
     final trimmed = query.trim();
     if (trimmed.isEmpty) return const [];
 
+    // Specific street addresses go to Nominatim first (finer PH address
+    // coverage); general place / landmark queries go to Mapbox first. Whichever
+    // is not the primary acts as the fallback if the primary yields nothing.
+    if (looksLikeSpecificAddress(trimmed)) {
+      final viaNominatim = await _searchViaNominatim(
+        trimmed,
+        longitude: longitude,
+        latitude: latitude,
+        limit: limit,
+      );
+      if (viaNominatim.isNotEmpty) return viaNominatim;
+      return _suggestViaMapbox(
+        trimmed,
+        sessionToken: sessionToken,
+        longitude: longitude,
+        latitude: latitude,
+        limit: limit,
+      );
+    }
+
+    final viaMapbox = await _suggestViaMapbox(
+      trimmed,
+      sessionToken: sessionToken,
+      longitude: longitude,
+      latitude: latitude,
+      limit: limit,
+    );
+    if (viaMapbox.isNotEmpty) return viaMapbox;
+
+    // Final fallback: Nominatim, so obscure specific addresses still resolve.
+    return _searchViaNominatim(
+      trimmed,
+      longitude: longitude,
+      latitude: latitude,
+      limit: limit,
+    );
+  }
+
+  /// Mapbox Search Box autocomplete (`/suggest`), falling back to the one-shot
+  /// `/forward` then Geocoding v6 endpoints. Used for general place / landmark
+  /// queries.
+  Future<List<PlaceResult>> _suggestViaMapbox(
+    String trimmed, {
+    required String sessionToken,
+    double? longitude,
+    double? latitude,
+    required int limit,
+  }) async {
     final params = <String, String>{
       'q': trimmed,
       'access_token': Env.mapboxPublicToken,
@@ -155,6 +240,87 @@ class MapsSearchService {
       longitude: longitude,
       latitude: latitude,
       limit: limit,
+    );
+  }
+
+  /// Forward-searches OpenStreetMap Nominatim, biased to the Philippines. Its
+  /// results already carry coordinates, so no `/retrieve` is needed.
+  Future<List<PlaceResult>> _searchViaNominatim(
+    String query, {
+    double? longitude,
+    double? latitude,
+    required int limit,
+  }) async {
+    final params = <String, String>{
+      'q': query,
+      'format': 'jsonv2',
+      'addressdetails': '1',
+      'limit': '$limit',
+      'countrycodes': 'ph',
+      'accept-language': 'en',
+    };
+    // Bias results toward the user with a viewbox around their location.
+    if (longitude != null && latitude != null) {
+      const d = 0.75; // ~80 km padding
+      params['viewbox'] =
+          '${longitude - d},${latitude + d},${longitude + d},${latitude - d}';
+      params['bounded'] = '0';
+    }
+
+    final uri = Uri.parse(_nominatimSearch).replace(queryParameters: params);
+    try {
+      final response = await _client.get(uri, headers: _nominatimHeaders);
+      if (response.statusCode != 200) {
+        debugPrint(
+          'Nominatim search failed ${response.statusCode}: ${response.body}',
+        );
+        return const [];
+      }
+      final decoded = jsonDecode(response.body);
+      if (decoded is! List) return const [];
+      final results = <PlaceResult>[];
+      for (final item in decoded) {
+        final r = _placeFromNominatim(item as Map<String, dynamic>);
+        if (r != null) results.add(r);
+      }
+      return results;
+    } catch (e) {
+      debugPrint('Nominatim search error: $e');
+      return const [];
+    }
+  }
+
+  PlaceResult? _placeFromNominatim(Map<String, dynamic> item) {
+    final lat = double.tryParse(item['lat']?.toString() ?? '');
+    final lon = double.tryParse(item['lon']?.toString() ?? '');
+    if (lat == null || lon == null) return null;
+
+    final address = item['address'] as Map<String, dynamic>?;
+    // Prefer a concise name; Nominatim's "name" is the primary label when set.
+    var name = (item['name'] as String?)?.trim();
+    if (name == null || name.isEmpty) {
+      // Build one from the most specific address components available.
+      final parts = <String?>[
+        address?['house_number']?.toString(),
+        (address?['road'] ?? address?['pedestrian'] ?? address?['neighbourhood'])
+            ?.toString(),
+      ].where((p) => p != null && p.isNotEmpty).cast<String>().toList();
+      name = parts.isNotEmpty
+          ? parts.join(' ')
+          : (item['display_name'] as String?)?.split(',').first.trim();
+    }
+    if (name == null || name.isEmpty) name = 'Selected location';
+
+    final fullAddress = (item['display_name'] as String?)?.trim();
+    final category = (item['type'] ?? item['category'] ?? item['class'])
+        ?.toString();
+
+    return PlaceResult(
+      name: name,
+      address: fullAddress,
+      category: category,
+      longitude: lon,
+      latitude: lat,
     );
   }
 
@@ -304,6 +470,14 @@ class MapsSearchService {
     required double longitude,
     required double latitude,
   }) async {
+    // Prefer Nominatim for a specific street-level address; fall back to
+    // Mapbox's reverse endpoint if it returns nothing.
+    final viaNominatim = await _reverseViaNominatim(
+      longitude: longitude,
+      latitude: latitude,
+    );
+    if (viaNominatim != null) return viaNominatim;
+
     final params = <String, String>{
       'longitude': '$longitude',
       'latitude': '$latitude',
@@ -326,6 +500,41 @@ class MapsSearchService {
     final features = (body['features'] as List?) ?? const [];
     if (features.isEmpty) return null;
     return _placeFromReverse(features.first as Map<String, dynamic>);
+  }
+
+  /// Reverse-geocodes a coordinate through Nominatim, returning a specific
+  /// street address when one exists. Returns null on any failure so the caller
+  /// can fall back to Mapbox.
+  Future<PlaceResult?> _reverseViaNominatim({
+    required double longitude,
+    required double latitude,
+  }) async {
+    final params = <String, String>{
+      'lat': '$latitude',
+      'lon': '$longitude',
+      'format': 'jsonv2',
+      'addressdetails': '1',
+      'zoom': '18', // building / house-number level
+      'accept-language': 'en',
+    };
+
+    final uri = Uri.parse(_nominatimReverse).replace(queryParameters: params);
+    try {
+      final response = await _client.get(uri, headers: _nominatimHeaders);
+      if (response.statusCode != 200) {
+        debugPrint(
+          'Nominatim reverse failed ${response.statusCode}: ${response.body}',
+        );
+        return null;
+      }
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) return null;
+      if (decoded['error'] != null) return null;
+      return _placeFromNominatim(decoded);
+    } catch (e) {
+      debugPrint('Nominatim reverse error: $e');
+      return null;
+    }
   }
 
   PlaceResult? _placeFromReverse(Map<String, dynamic> feature) {

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 import '../../../core/animations/tabs_transitions.dart';
 import '../../../core/navbar/navbar_widget.dart';
@@ -37,6 +38,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
   late final MapsController _mapsController;
 
+  // Routes tab's Matrix/Finder toggle. Owned here (rather than inside
+  // RoutesTab) so it can render directly below the floating search bar.
+  RouteMode _routeMode = RouteMode.matrix;
+
+  // ── Voice search (speech-to-text) ──────────────────────────────────────
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  bool _speechAvailable = false;
+  bool _listening = false;
+  String _transcript = '';
+  String? _speechError;
+
   @override
   void initState() {
     super.initState();
@@ -50,6 +62,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _readyTimeout?.cancel();
     _mapsController.dispose();
+    _speech.stop();
     super.dispose();
   }
 
@@ -60,15 +73,89 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _mapReady = true);
   }
 
+  // ── Mic / voice search ─────────────────────────────────────────────────
+  Future<void> _onMicTap() async {
+    if (_listening) {
+      await _speech.stop();
+      if (mounted) setState(() => _listening = false);
+      return;
+    }
+
+    if (!_speechAvailable) {
+      _speechAvailable = await _speech.initialize(
+        onStatus: _onSpeechStatus,
+        onError: (err) {
+          if (mounted) {
+            setState(() {
+              _listening = false;
+              _speechError = 'Voice input error. Try again.';
+            });
+          }
+        },
+      );
+    }
+    if (!_speechAvailable) {
+      if (mounted) {
+        setState(() => _speechError =
+            'Microphone unavailable. Check app permissions.');
+      }
+      return;
+    }
+
+    // Focus the field so results appear as speech is transcribed.
+    _mapsController.searchFocus.requestFocus();
+    setState(() {
+      _listening = true;
+      _transcript = '';
+      _speechError = null;
+    });
+
+    await _speech.listen(
+      onResult: (result) {
+        final words = result.recognizedWords;
+        if (!mounted) return;
+        setState(() => _transcript = words);
+        // Feed the field live so search runs while dictating.
+        _mapsController.searchText.text = words;
+      },
+      listenOptions: stt.SpeechListenOptions(
+        partialResults: true,
+        cancelOnError: true,
+        listenFor: const Duration(seconds: 30),
+        pauseFor: const Duration(seconds: 4),
+      ),
+    );
+  }
+
+  void _onSpeechStatus(String status) {
+    if (!mounted) return;
+    // 'done' / 'notListening' mean the engine stopped capturing.
+    if (status == 'done' || status == 'notListening') {
+      setState(() => _listening = false);
+    }
+  }
+
+  void _stopListening() {
+    _speech.stop();
+    if (mounted) {
+      setState(() {
+        _listening = false;
+        _speechError = null;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.sizeOf(context).height;
     final topOffset = screenHeight * 0.07;
     final showSearchBar = _tabIndex == 0 || _tabIndex == 1;
+    final isRoutesTab = _tabIndex == 1;
+    final isMapsTab = _tabIndex == 0;
 
     final tabs = <Widget>[
       MapsTab(onMapReady: _handleMapReady, controller: _mapsController),
-      const RoutesTab(),
+      RoutesTab(mode: _routeMode),
       const HistoryTab(),
       const ProfileTab(),
     ];
@@ -85,7 +172,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
 
           // Tap-away scrim: closes the search dropdown when tapping the map.
-          if (showSearchBar)
+          // Search results / nearby places are exclusive to the Maps tab.
+          if (isMapsTab)
             AnimatedBuilder(
               animation: _mapsController,
               builder: (context, _) {
@@ -101,8 +189,8 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
 
-          // Search bar + results dropdown (Maps/Routes only), revealed once the
-          // map is ready.
+          // Search bar + mode toggle (Routes only) + results dropdown
+          // (Maps/Routes only), revealed once the map is ready.
           if (showSearchBar)
             Positioned(
               top: topOffset,
@@ -122,14 +210,43 @@ class _HomeScreenState extends State<HomeScreen> {
                           LocationSearchBar(
                             controller: _mapsController.searchText,
                             focusNode: _mapsController.searchFocus,
+                            onMicTap: _onMicTap,
+                            micActive: _listening,
                           ),
-                          if (_mapsController.resultsVisible)
+                          // Matrix/Finder toggle sits directly below the
+                          // search bar, Routes tab only.
+                          if (isRoutesTab) ...[
+                            const SizedBox(height: 12),
+                            Align(
+                              alignment: Alignment.center,
+                              child: ModeToggle(
+                                mode: _routeMode,
+                                onChanged: (mode) =>
+                                    setState(() => _routeMode = mode),
+                              ),
+                            ),
+                          ],
+                          // Voice transcription + search results / nearby
+                          // places are exclusive to the Maps tab.
+                          if (isMapsTab && (_listening || _speechError != null))
+                            _TranscriptionCard(
+                              transcript: _transcript,
+                              listening: _listening,
+                              error: _speechError,
+                              onStop: _stopListening,
+                            )
+                          else if (isMapsTab && _mapsController.resultsVisible)
                             SearchResultsDropdown(
                               results: _mapsController.results,
                               loading: _mapsController.loading,
                               showingNearby: _mapsController.showingNearby,
                               error: _mapsController.error,
                               onSelect: _mapsController.selectResult,
+                              collapsed: _mapsController.resultsCollapsed,
+                              onToggleCollapse: () =>
+                                  _mapsController.resultsCollapsed
+                                      ? _mapsController.expandResults()
+                                      : _mapsController.collapseResults(),
                             ),
                         ],
                       );
@@ -220,6 +337,106 @@ class _HomeSkeleton extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Card shown beneath the search bar while dictating: holds the live
+/// speech-to-text transcription (or an error), with a stop control.
+class _TranscriptionCard extends StatelessWidget {
+  const _TranscriptionCard({
+    required this.transcript,
+    required this.listening,
+    required this.onStop,
+    this.error,
+  });
+
+  final String transcript;
+  final bool listening;
+  final String? error;
+  final VoidCallback onStop;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasError = error != null;
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.fromLTRB(18, 16, 12, 16),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x26000000),
+            blurRadius: 16,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            hasError ? Icons.mic_off_rounded : Icons.mic_rounded,
+            color: hasError ? AppColors.error : AppColors.primary,
+            size: 22,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  hasError
+                      ? 'Voice search'
+                      : (listening ? 'Listening…' : 'Tap the mic to speak'),
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    color: hasError ? AppColors.error : AppColors.primary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  hasError
+                      ? error!
+                      : (transcript.isEmpty
+                          ? 'Say a place or address…'
+                          : transcript),
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    color: transcript.isEmpty && !hasError
+                        ? AppColors.hintGrey
+                        : AppColors.textDark,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: onStop,
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              margin: const EdgeInsets.only(left: 8),
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                listening ? Icons.stop_rounded : Icons.close_rounded,
+                color: AppColors.error,
+                size: 20,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

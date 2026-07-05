@@ -1,36 +1,30 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:geolocator/geolocator.dart' as geo;
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import '../../../core/theme/app_colors.dart';
+import 'tabs/maps_tab/building_highlight_service.dart';
 import 'tabs/maps_tab/maps_controller.dart';
 import 'tabs/maps_tab/place_result.dart';
-import 'tabs/maps_tab/search_pin_marker.dart'
-    show RadarPulse, MapPinGraphic;
 
 /// Renders the interactive map, locked to the Philippines.
 ///
-/// On load it requests location permission and centers the camera on the user
-/// at street level (so buildings and roads are the focus), showing their
-/// location puck. If permission is denied or the location can't be read, it
-/// falls back to framing the whole country. Panning stays within the
-/// Philippines and users can zoom out to the full nation but no further.
-///
-/// It also owns the searched-location marker: when the [MapsController] reports
-/// a selection, the camera flies there and a green pin with an animated radar
-/// pulse is overlaid, kept anchored to the geographic point as the camera moves.
+/// The searched / current-location marker is drawn with NATIVE Mapbox
+/// annotations (a pin image + animated radar rings). Because native annotations
+/// are anchored to the geographic coordinate by the SDK itself, the pin stays
+/// perfectly glued to its spot during pan/zoom with no reprojection wobble —
+/// and it looks identical whether the location is being edited or confirmed
+/// (confirming only disables dragging). A small invisible Flutter hit-area over
+/// the pin lets the user drag it (when unlocked); dragging moves the native
+/// annotation live and reverse-geocodes the spot.
 class HomescreenMapRenderer extends StatefulWidget {
   const HomescreenMapRenderer({super.key, this.onReady, this.controller});
 
-  /// Fired once the map style has loaded and the camera has been centered on
-  /// the user's location (or the country fallback). Called at most once.
   final VoidCallback? onReady;
-
-  /// Shared maps state. When null the map is purely presentational.
   final MapsController? controller;
 
   @override
@@ -39,19 +33,13 @@ class HomescreenMapRenderer extends StatefulWidget {
 
 class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
     with SingleTickerProviderStateMixin {
-  // Philippines extents (with margin for Batanes in the north and Tawi-Tawi in
-  // the south). Position is (longitude, latitude).
+  // Philippines extents. Position is (longitude, latitude).
   static final Position _southwest = Position(116.0, 4.2);
   static final Position _northeast = Position(127.0, 21.5);
-
-  // Used only when the user's location is unavailable.
   static final Position _fallbackCenter = Position(121.774, 12.8797);
 
-  // Street-level zoom so buildings and roads are the focus on first load.
   static const double _streetZoom = 16.0;
   static const double _maxZoom = 19.0;
-
-  // Zoom the camera settles at when flying to a searched location.
   static const double _pinZoom = 16.5;
 
   bool _styleLoaded = false;
@@ -60,194 +48,162 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
 
   MapboxMap? _map;
 
-  /// The currently pinned place and its projected screen position (logical
-  /// pixels). Both null when nothing is pinned.
+  /// The place currently marked, or null when nothing is pinned.
   PlaceResult? _pinned;
+
+  /// Reprojected screen position of the pin, used only to place the invisible
+  /// drag hit-area. Recomputed when the pin changes and when the camera goes
+  /// idle (so it's accurate whenever the user might grab the pin).
   ScreenCoordinate? _pinScreen;
 
-  /// While the pin is being dragged, this holds its live screen position and
-  /// [_pinScreen] is ignored so the marker follows the finger.
   bool _dragging = false;
   ScreenCoordinate? _dragScreen;
+  bool _dragMoveBusy = false;
 
-  /// Mirrors the controller's locked state. While editing, the pin is a
-  /// screen-anchored Flutter overlay (stays put on screen, draggable). Once
-  /// locked (confirmed), it is replaced by NATIVE Mapbox annotations — a pin
-  /// plus animated radar circles — which the SDK keeps perfectly glued to the
-  /// coordinate during pan/zoom (no reprojection, so no wobble), at the same
-  /// size and with the radar still pulsing.
   bool _locked = false;
 
-  // Native locked-pin rendering.
+  Timer? _liveResolveTimer;
+  static const Duration _liveResolveDebounce = Duration(milliseconds: 600);
+
+  bool _reprojecting = false;
+
+  // ── Native marker (pin + radar) ────────────────────────────────────────
   PointAnnotationManager? _pinManager;
-  PointAnnotation? _lockedAnnotation;
-  Uint8List? _greenPinBytes;
   CircleAnnotationManager? _radarManager;
+  PointAnnotation? _pinAnnotation;
   final List<CircleAnnotation> _radarRings = [];
+  CircleAnnotation? _radarDot;
   AnimationController? _radarController;
   bool _radarUpdating = false;
+  bool _radarActive = false;
 
+  static const int _radarRingCount = 3;
   static const double _radarMaxRadius = 90;
+  static const double _pinHeight = 52;
 
-  /// Set before a programmatic camera move (e.g. fly-to a search result) so the
-  /// idle that follows doesn't overwrite the precise, freshly-selected place.
-  bool _suppressIdleResolve = false;
+  /// Cache of rendered pin PNGs keyed by ARGB color, so we don't re-rasterize.
+  final Map<int, Uint8List> _pinBytesCache = {};
+  double _pinDpr = 1;
 
-  /// Latest laid-out size of the map (logical px), used to place the pin at the
-  /// viewport center when flying to a searched location. Stored as plain
-  /// doubles because `Size` is ambiguous (Mapbox also exports a `Size`).
-  double _viewportWidth = 0;
-  double _viewportHeight = 0;
+  // ── Building highlight (OSM polygon, yellow border) ─────────────────────
+  final BuildingHighlightService _buildingService = BuildingHighlightService();
+  static const String _highlightSourceId = 'building-highlight-source';
+  static const String _highlightFillLayerId = 'building-highlight-fill';
+  static const String _highlightLineLayerId = 'building-highlight-line';
+  bool _highlightLayersAdded = false;
+  static const String _emptyFeatureCollection =
+      '{"type":"FeatureCollection","features":[]}';
 
   @override
   void initState() {
     super.initState();
     widget.controller
-      ?..attachMap(onFlyToPin: _flyToPin, onClearPin: _clearPin)
+      ?..attachMap(onShowPin: _showPin, onClearPin: _clearPin)
       ..addListener(_onControllerChanged);
   }
 
   @override
   void dispose() {
     widget.controller?.removeListener(_onControllerChanged);
+    _liveResolveTimer?.cancel();
     _radarController?.dispose();
+    _buildingService.dispose();
     super.dispose();
   }
 
   void _onControllerChanged() {
     final locked = widget.controller?.locked ?? false;
-    if (locked == _locked || !mounted) return;
-    if (locked) {
-      _lockPin();
-    } else {
-      _unlockPin();
+    if (locked != _locked && mounted) {
+      setState(() => _locked = locked);
     }
   }
 
-  /// Confirm → plant NATIVE annotations (pin + radar) at the pinned coordinate.
-  /// Native annotations move with the map itself, so they stay glued with no
-  /// reprojection lag (no wobble). The Flutter overlay is hidden while locked.
-  Future<void> _lockPin() async {
-    final map = _map;
-    final place = _pinned;
-    setState(() => _locked = true);
-    if (map == null || place == null) return;
+  void _maybeFireReady() {
+    if (!_readyFired && _styleLoaded && _cameraReady && mounted) {
+      _readyFired = true;
+      widget.onReady?.call();
+    }
+  }
 
-    // Capture before any async gap (context must not cross awaits).
-    final dpr = MediaQuery.devicePixelRatioOf(context);
-    final geometry =
-        Point(coordinates: Position(place.longitude, place.latitude));
-    try {
-      // Create the radar manager first so its circles draw beneath the pin.
-      _radarManager ??= await map.annotations.createCircleAnnotationManager();
-      _pinManager ??= await map.annotations.createPointAnnotationManager();
-
-      // Clear anything left over from a previous lock.
-      await _radarManager!.deleteAll();
-      _radarRings.clear();
-      if (_lockedAnnotation != null) {
-        await _pinManager!.delete(_lockedAnnotation!);
-        _lockedAnnotation = null;
-      }
-
-      final color = AppColors.primary.toARGB32();
-      for (var i = 0; i < 3; i++) {
-        final ring = await _radarManager!.create(
-          CircleAnnotationOptions(
-            geometry: geometry,
-            circleRadius: 0,
-            circleColor: color,
-            circleOpacity: 0,
-            circleBlur: 0.4,
-          ),
-        );
-        _radarRings.add(ring);
-      }
-
-      _greenPinBytes ??= await _renderPinBytes(dpr);
-      _lockedAnnotation = await _pinManager!.create(
-        PointAnnotationOptions(
-          geometry: geometry,
-          image: _greenPinBytes!,
-          iconSize: 1.0,
-          iconAnchor: IconAnchor.BOTTOM,
-        ),
+  CoordinateBounds get _phBounds => CoordinateBounds(
+        southwest: Point(coordinates: _southwest),
+        northeast: Point(coordinates: _northeast),
+        infiniteBounds: false,
       );
 
-      _startRadar();
-    } catch (e) {
-      debugPrint('lockPin failed: $e');
+  Future<void> _onMapCreated(MapboxMap mapboxMap) async {
+    _map = mapboxMap;
+    _pinDpr = MediaQuery.devicePixelRatioOf(context);
+
+    await mapboxMap.compass.updateSettings(CompassSettings(enabled: false));
+    await mapboxMap.scaleBar.updateSettings(ScaleBarSettings(enabled: false));
+
+    // Our own red pin represents the user's location, so hide the puck.
+    await mapboxMap.location
+        .updateSettings(LocationComponentSettings(enabled: false));
+
+    final userPosition = await _requestUserLocation();
+
+    final fitted = await mapboxMap.cameraForCoordinateBounds(
+      _phBounds,
+      MbxEdgeInsets(top: 24, left: 24, bottom: 24, right: 24),
+      null,
+      null,
+      null,
+      null,
+    );
+    await mapboxMap.setBounds(
+      CameraBoundsOptions(
+        bounds: _phBounds,
+        minZoom: fitted.zoom,
+        maxZoom: _maxZoom,
+      ),
+    );
+
+    if (userPosition != null) {
+      await mapboxMap.setCamera(
+        CameraOptions(
+          center: Point(
+            coordinates:
+                Position(userPosition.longitude, userPosition.latitude),
+          ),
+          zoom: _streetZoom,
+        ),
+      );
+    } else {
+      await mapboxMap.setCamera(
+        CameraOptions(center: Point(coordinates: _fallbackCenter), zoom: fitted.zoom),
+      );
+    }
+
+    // Create the annotation managers up front (radar under the pin).
+    _radarManager ??= await mapboxMap.annotations.createCircleAnnotationManager();
+    _pinManager ??= await mapboxMap.annotations.createPointAnnotationManager();
+
+    _cameraReady = true;
+    _maybeFireReady();
+
+    if (userPosition != null) {
+      widget.controller?.setUserLocation(
+        longitude: userPosition.longitude,
+        latitude: userPosition.latitude,
+      );
     }
   }
 
-  /// Edit → remove the native annotations and restore the draggable Flutter
-  /// overlay at the pin's current on-screen position.
-  Future<void> _unlockPin() async {
-    final map = _map;
-    final place = _pinned;
-    _radarController?.stop();
-    if (_radarManager != null) {
-      try {
-        await _radarManager!.deleteAll();
-      } catch (_) {}
-    }
-    _radarRings.clear();
-    if (_lockedAnnotation != null && _pinManager != null) {
-      try {
-        await _pinManager!.delete(_lockedAnnotation!);
-      } catch (_) {}
-      _lockedAnnotation = null;
-    }
-    if (map != null && place != null) {
-      try {
-        final sc = await map.pixelForCoordinate(
-          Point(coordinates: Position(place.longitude, place.latitude)),
-        );
-        if (mounted) _pinScreen = sc;
-      } catch (_) {}
-    }
-    if (mounted) setState(() => _locked = false);
-  }
+  // ── Pin colors ─────────────────────────────────────────────────────────
+  Color get _pinColor => (_pinned?.isCurrentLocation ?? false)
+      ? AppColors.currentLocation
+      : AppColors.primary;
 
-  void _startRadar() {
-    _radarController ??= AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2600),
-    )..addListener(_tickRadar);
-    _radarController!
-      ..reset()
-      ..repeat();
-  }
+  /// Rasterizes (once, cached) the teardrop pin PNG in [color] at the device
+  /// pixel ratio so the native image matches the intended on-screen size.
+  Future<Uint8List> _pinBytesFor(Color color) async {
+    final key = color.toARGB32();
+    final cached = _pinBytesCache[key];
+    if (cached != null) return cached;
 
-  /// Drives the native radar circles' radius + opacity each frame. Position is
-  /// fixed by the source geometry, so the rings never drift — only the pulse
-  /// animates. Self-throttles to the annotation channel's throughput.
-  Future<void> _tickRadar() async {
-    final manager = _radarManager;
-    final controller = _radarController;
-    if (manager == null ||
-        controller == null ||
-        _radarRings.isEmpty ||
-        _radarUpdating) {
-      return;
-    }
-    _radarUpdating = true;
-    final base = controller.value;
-    for (var i = 0; i < _radarRings.length; i++) {
-      final t = (base + i / _radarRings.length) % 1.0;
-      _radarRings[i].circleRadius = _radarMaxRadius * t;
-      _radarRings[i].circleOpacity = (1 - t) * 0.35;
-    }
-    try {
-      await Future.wait(_radarRings.map(manager.update));
-    } catch (_) {}
-    _radarUpdating = false;
-  }
-
-  /// Rasterizes the green teardrop marker (with a white core) to PNG bytes at
-  /// the device pixel ratio so the native pin matches the Flutter pin's size.
-  Future<Uint8List> _renderPinBytes(double dpr) async {
-    final side = _pinHeight * dpr;
+    final side = _pinHeight * _pinDpr;
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
 
@@ -265,7 +221,7 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
         fontSize: side,
         fontFamily: Icons.location_on.fontFamily,
         package: Icons.location_on.fontPackage,
-        color: AppColors.primary,
+        color: color,
       ),
     );
     tp.layout();
@@ -274,146 +230,150 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
     final image =
         await recorder.endRecording().toImage(side.ceil(), side.ceil());
     final data = await image.toByteData(format: ui.ImageByteFormat.png);
-    return data!.buffer.asUint8List();
+    final bytes = data!.buffer.asUint8List();
+    _pinBytesCache[key] = bytes;
+    return bytes;
   }
 
-  /// Notifies the parent once the map is both styled and centered.
-  void _maybeFireReady() {
-    if (!_readyFired && _styleLoaded && _cameraReady && mounted) {
-      _readyFired = true;
-      widget.onReady?.call();
-    }
-  }
+  // ── Show / move / clear the native marker ──────────────────────────────
 
-  CoordinateBounds get _phBounds => CoordinateBounds(
-        southwest: Point(coordinates: _southwest),
-        northeast: Point(coordinates: _northeast),
-        infiniteBounds: false,
-      );
-
-  Future<void> _onMapCreated(MapboxMap mapboxMap) async {
-    _map = mapboxMap;
-
-    // Hide the default ornaments the app doesn't need (compass + scale bar).
-    // Logo and attribution stay visible as required by Mapbox's terms.
-    await mapboxMap.compass.updateSettings(CompassSettings(enabled: false));
-    await mapboxMap.scaleBar.updateSettings(ScaleBarSettings(enabled: false));
-
-    // Ask for permission and read the current location up front so it becomes
-    // the basis for the initial camera.
-    final userPosition = await _requestUserLocation();
-    if (userPosition != null) {
-      widget.controller?.setUserLocation(
-        longitude: userPosition.longitude,
-        latitude: userPosition.latitude,
-      );
-    }
-
-    // Show the user's location as a red map pin instead of the default blue
-    // puck. The pin PNG is loaded from assets and handed to the 2D puck as its
-    // top image; pulsing is disabled so it reads as a clean marker.
-    final pinBytes = await rootBundle.load(
-      'public/assets/icons/pin_red_icon.png',
-    );
-    await mapboxMap.location.updateSettings(
-      LocationComponentSettings(
-        enabled: true,
-        pulsingEnabled: false,
-        puckBearingEnabled: false,
-        locationPuck: LocationPuck(
-          locationPuck2D: LocationPuck2D(
-            topImage: pinBytes.buffer.asUint8List(),
-            // The source PNG is high-res, so scale it down to a compact,
-            // Google Maps-sized marker. scaleExpression takes a Mapbox style
-            // expression as a JSON string; a bare number is ignored, so it
-            // must be wrapped as a ["literal", n] expression. Like Google
-            // Maps' marker, this keeps a constant on-screen size across zoom.
-            scaleExpression: '["literal", 0.25]',
-          ),
-        ),
-      ),
-    );
-
-    // Keep panning within the country; the country-fit zoom is the floor so
-    // users can zoom out to the whole nation but never past it.
-    final fitted = await mapboxMap.cameraForCoordinateBounds(
-      _phBounds,
-      MbxEdgeInsets(top: 24, left: 24, bottom: 24, right: 24),
-      null,
-      null,
-      null,
-      null,
-    );
-    await mapboxMap.setBounds(
-      CameraBoundsOptions(
-        bounds: _phBounds,
-        minZoom: fitted.zoom,
-        maxZoom: _maxZoom,
-      ),
-    );
-
-    // Center on the user at street level, or fall back to the country view.
-    if (userPosition != null) {
-      await mapboxMap.setCamera(
-        CameraOptions(
-          center: Point(
-            coordinates: Position(
-              userPosition.longitude,
-              userPosition.latitude,
-            ),
-          ),
-          zoom: _streetZoom,
-        ),
-      );
-    } else {
-      await mapboxMap.setCamera(
-        CameraOptions(
-          center: Point(coordinates: _fallbackCenter),
-          zoom: fitted.zoom,
-        ),
-      );
-    }
-
-    _cameraReady = true;
-    _maybeFireReady();
-  }
-
-  /// Flies the camera to [place] and drops the green pin at the viewport
-  /// center. The pin is screen-anchored: once placed it stays put on screen
-  /// while the user pans/zooms; only dragging it moves it.
-  Future<void> _flyToPin(PlaceResult place) async {
+  /// Shows a marker for [place]. Searched destinations animate the camera; the
+  /// current-location pin is placed without moving the camera.
+  Future<void> _showPin(PlaceResult place, {bool animateCamera = true}) async {
     final map = _map;
-    setState(() {
+    // Don't yank the pin out from under an in-progress drag.
+    if (_dragging) {
       _pinned = place;
-      _pinScreen = _viewportCenter;
-      _dragScreen = null;
-    });
+      return;
+    }
+    setState(() => _pinned = place);
 
-    if (map == null) return;
-    // The searched place is precise; don't let the post-fly idle relabel it.
-    _suppressIdleResolve = true;
-    await map.flyTo(
-      CameraOptions(
-        center: Point(
-          coordinates: Position(place.longitude, place.latitude),
+    if (map != null && animateCamera) {
+      await map.flyTo(
+        CameraOptions(
+          center: Point(coordinates: Position(place.longitude, place.latitude)),
+          zoom: _pinZoom,
         ),
-        zoom: _pinZoom,
-      ),
-      MapAnimationOptions(duration: 1200),
-    );
+        MapAnimationOptions(duration: 1200),
+      );
+    }
+
+    await _placeNativeMarker(place);
+    await _reprojectHitArea();
+
+    if (animateCamera) {
+      // Highlight the searched building's footprint (OSM yellow outline).
+      unawaited(_showBuildingHighlight(place));
+    }
+  }
+
+  /// Creates or moves the native pin + radar rings to [place]'s coordinate.
+  Future<void> _placeNativeMarker(PlaceResult place) async {
+    final map = _map;
+    if (map == null) return;
+    _pinManager ??= await map.annotations.createPointAnnotationManager();
+    _radarManager ??= await map.annotations.createCircleAnnotationManager();
+
+    final geometry =
+        Point(coordinates: Position(place.longitude, place.latitude));
+    final colorInt = _pinColor.toARGB32();
+
+    try {
+      // Radar rings (created once, then repositioned).
+      if (_radarRings.isEmpty) {
+        for (var i = 0; i < _radarRingCount; i++) {
+          final ring = await _radarManager!.create(
+            CircleAnnotationOptions(
+              geometry: geometry,
+              circleRadius: 0,
+              circleColor: colorInt,
+              circleOpacity: 0,
+              circleStrokeColor: colorInt,
+              circleStrokeWidth: 2,
+              circleStrokeOpacity: 0,
+            ),
+          );
+          _radarRings.add(ring);
+        }
+        _radarDot = await _radarManager!.create(
+          CircleAnnotationOptions(
+            geometry: geometry,
+            circleRadius: 5,
+            circleColor: colorInt,
+            circleOpacity: 0.9,
+          ),
+        );
+      } else {
+        for (final ring in _radarRings) {
+          ring.geometry = geometry;
+          ring.circleColor = colorInt;
+          ring.circleStrokeColor = colorInt;
+          await _radarManager!.update(ring);
+        }
+        final dot = _radarDot;
+        if (dot != null) {
+          dot.geometry = geometry;
+          dot.circleColor = colorInt;
+          await _radarManager!.update(dot);
+        }
+      }
+
+      // Pin image.
+      final bytes = await _pinBytesFor(_pinColor);
+      final existing = _pinAnnotation;
+      if (existing == null) {
+        _pinAnnotation = await _pinManager!.create(
+          PointAnnotationOptions(
+            geometry: geometry,
+            image: bytes,
+            iconSize: 1.0,
+            iconAnchor: IconAnchor.BOTTOM,
+          ),
+        );
+      } else {
+        existing.geometry = geometry;
+        existing.image = bytes;
+        await _pinManager!.update(existing);
+      }
+
+      _startRadar();
+    } catch (e) {
+      debugPrint('placeNativeMarker failed: $e');
+    }
+  }
+
+  /// Moves just the pin (radar hidden) to a screen point during a drag.
+  Future<void> _moveNativePinToScreen(ScreenCoordinate screen) async {
+    final map = _map;
+    final pin = _pinAnnotation;
+    if (map == null || pin == null || _dragMoveBusy) return;
+    _dragMoveBusy = true;
+    try {
+      final point = await map.coordinateForPixel(screen);
+      pin.geometry = point;
+      await _pinManager?.update(pin);
+    } catch (_) {
+    } finally {
+      _dragMoveBusy = false;
+    }
   }
 
   void _clearPin() {
     if (!mounted) return;
-    _radarController?.stop();
-    if (_radarManager != null) {
-      _radarManager!.deleteAll().catchError((_) {});
-    }
-    _radarRings.clear();
-    if (_lockedAnnotation != null && _pinManager != null) {
-      _pinManager!.delete(_lockedAnnotation!).catchError((_) {});
-      _lockedAnnotation = null;
-    }
+    _liveResolveTimer?.cancel();
+    _stopRadar();
+    unawaited(_clearBuildingHighlight());
+    () async {
+      try {
+        if (_pinAnnotation != null) await _pinManager?.delete(_pinAnnotation!);
+      } catch (_) {}
+      try {
+        await _radarManager?.deleteAll();
+      } catch (_) {}
+      _pinAnnotation = null;
+      _radarRings.clear();
+      _radarDot = null;
+    }();
     setState(() {
       _pinned = null;
       _pinScreen = null;
@@ -423,9 +383,75 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
     });
   }
 
-  // ── Pin dragging ─────────────────────────────────────────────────────────
+  // ── Radar animation (native, matches the app's radar look) ─────────────
+  void _startRadar() {
+    _radarActive = true;
+    _radarController ??= AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2600),
+    )..addListener(_tickRadar);
+    if (!_radarController!.isAnimating) {
+      _radarController!
+        ..reset()
+        ..repeat();
+    }
+  }
+
+  void _stopRadar() {
+    _radarActive = false;
+    _radarController?.stop();
+  }
+
+  Future<void> _tickRadar() async {
+    final manager = _radarManager;
+    final controller = _radarController;
+    if (!_radarActive ||
+        manager == null ||
+        controller == null ||
+        _radarRings.isEmpty ||
+        _radarUpdating ||
+        _dragging) {
+      return;
+    }
+    _radarUpdating = true;
+    final base = controller.value;
+    for (var i = 0; i < _radarRings.length; i++) {
+      final t = (base + i / _radarRings.length) % 1.0;
+      final ring = _radarRings[i];
+      ring.circleRadius = _radarMaxRadius * t;
+      ring.circleStrokeOpacity = (1 - t) * 0.55;
+      // Faint fill inside the leading ring only.
+      ring.circleOpacity = i == 0 ? (1 - t) * 0.15 : 0;
+    }
+    try {
+      await Future.wait(_radarRings.map(manager.update));
+    } catch (_) {}
+    _radarUpdating = false;
+  }
+
+  /// Hides the radar rings (used while dragging) without destroying them.
+  Future<void> _hideRadar() async {
+    final manager = _radarManager;
+    if (manager == null) return;
+    for (final ring in _radarRings) {
+      ring.circleStrokeOpacity = 0;
+      ring.circleOpacity = 0;
+    }
+    final dot = _radarDot;
+    if (dot != null) dot.circleOpacity = 0;
+    try {
+      await Future.wait([
+        ..._radarRings.map(manager.update),
+        if (dot != null) manager.update(dot),
+      ]);
+    } catch (_) {}
+  }
+
+  // ── Dragging (invisible hit-area over the native pin) ──────────────────
   void _onPinPanStart(DragStartDetails _) {
     if (_locked) return;
+    _stopRadar();
+    unawaited(_hideRadar());
     setState(() {
       _dragging = true;
       _dragScreen = _pinScreen;
@@ -436,25 +462,45 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
     if (!_dragging) return;
     final current = _dragScreen ?? _pinScreen;
     if (current == null) return;
-    setState(() {
-      _dragScreen = ScreenCoordinate(
-        x: current.x + details.delta.dx,
-        y: current.y + details.delta.dy,
-      );
+    final next = ScreenCoordinate(
+      x: current.x + details.delta.dx,
+      y: current.y + details.delta.dy,
+    );
+    setState(() => _dragScreen = next);
+    unawaited(_moveNativePinToScreen(next));
+    _scheduleLiveResolve();
+  }
+
+  void _scheduleLiveResolve() {
+    _liveResolveTimer?.cancel();
+    _liveResolveTimer = Timer(_liveResolveDebounce, () async {
+      final map = _map;
+      final controller = widget.controller;
+      final drop = _dragScreen;
+      if (map == null || controller == null || drop == null || !_dragging) {
+        return;
+      }
+      try {
+        final point = await map.coordinateForPixel(drop);
+        final coords = point.coordinates;
+        await controller.resolveDroppedPin(
+          longitude: coords.lng.toDouble(),
+          latitude: coords.lat.toDouble(),
+          live: true,
+        );
+      } catch (_) {}
     });
   }
 
-  /// On release, convert the marker's screen position back to a coordinate,
-  /// snap it to the nearest address/road via reverse geocoding, and move the
-  /// pin onto that snapped point. The camera is left untouched so nothing else
-  /// on screen shifts.
   Future<void> _onPinPanEnd(DragEndDetails _) async {
+    _liveResolveTimer?.cancel();
     final map = _map;
     final controller = widget.controller;
     final drop = _dragScreen;
     setState(() => _dragging = false);
     if (map == null || controller == null || drop == null) {
       setState(() => _dragScreen = null);
+      await _placeNativeMarker(_pinned!);
       return;
     }
 
@@ -466,83 +512,40 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
         latitude: coords.lat.toDouble(),
       );
       if (!mounted) return;
-
-      // Project the snapped coordinate back to the screen so the pin visually
-      // lands on the corrected (road/address) spot without moving the map.
-      ScreenCoordinate? snapped;
-      try {
-        snapped = await map.pixelForCoordinate(
-          Point(
-            coordinates: Position(resolved.longitude, resolved.latitude),
-          ),
-        );
-      } catch (_) {
-        snapped = null;
-      }
-      if (!mounted) return;
       setState(() {
         _pinned = resolved;
         _dragScreen = null;
-        if (snapped != null) _pinScreen = snapped;
       });
+      await _placeNativeMarker(resolved);
+      await _reprojectHitArea();
+      unawaited(_showBuildingHighlight(resolved));
     } catch (_) {
       if (!mounted) return;
       setState(() => _dragScreen = null);
+      if (_pinned != null) await _placeNativeMarker(_pinned!);
     }
   }
 
-  /// Once the map settles after a user pan/zoom, refresh the pin's label to the
-  /// place now under it — without moving the pin. Skipped for programmatic
-  /// camera moves (search fly-to) and while dragging or locked.
-  Future<void> _handleMapIdle() async {
-    if (_suppressIdleResolve) {
-      _suppressIdleResolve = false;
-      return;
-    }
+  /// Recomputes the pin's on-screen position so the invisible drag hit-area
+  /// sits over it. Cheap and only needed when the camera is steady.
+  Future<void> _reprojectHitArea() async {
     final map = _map;
-    final controller = widget.controller;
-    final screen = _pinScreen;
-    if (map == null ||
-        controller == null ||
-        _pinned == null ||
-        screen == null ||
-        _dragging ||
-        _locked) {
-      return;
-    }
+    final place = _pinned;
+    if (map == null || place == null || _dragging || _reprojecting) return;
+    _reprojecting = true;
     try {
-      final point = await map.coordinateForPixel(screen);
-      final coords = point.coordinates;
-      final resolved = await controller.resolveDroppedPin(
-        longitude: coords.lng.toDouble(),
-        latitude: coords.lat.toDouble(),
+      final screen = await map.pixelForCoordinate(
+        Point(coordinates: Position(place.longitude, place.latitude)),
       );
-      if (!mounted) return;
-      // Keep the pin's screen position; only its label/coordinate updated.
-      setState(() => _pinned = resolved);
+      if (mounted && !_dragging) setState(() => _pinScreen = screen);
     } catch (_) {
-      // Ignore transient projection / network errors.
+    } finally {
+      _reprojecting = false;
     }
   }
 
-  /// The viewport center in logical pixels (falls back to the screen size
-  /// before the first layout pass).
-  ScreenCoordinate get _viewportCenter {
-    var width = _viewportWidth;
-    var height = _viewportHeight;
-    if (width <= 0 || height <= 0) {
-      final media = MediaQuery.sizeOf(context);
-      width = media.width;
-      height = media.height;
-    }
-    return ScreenCoordinate(x: width / 2, y: height / 2);
-  }
-
-  /// Requests location permission (if needed) and returns the current position,
-  /// or null if the service is off or permission was denied.
   Future<geo.Position?> _requestUserLocation() async {
     if (!await geo.Geolocator.isLocationServiceEnabled()) return null;
-
     var permission = await geo.Geolocator.checkPermission();
     if (permission == geo.LocationPermission.denied) {
       permission = await geo.Geolocator.requestPermission();
@@ -551,7 +554,6 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
         permission == geo.LocationPermission.deniedForever) {
       return null;
     }
-
     try {
       return await geo.Geolocator.getCurrentPosition();
     } catch (_) {
@@ -559,83 +561,104 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
     }
   }
 
+  // ── Building highlight layer management ────────────────────────────────
+  Future<void> _ensureHighlightLayers() async {
+    final map = _map;
+    if (map == null || _highlightLayersAdded) return;
+    _highlightLayersAdded = true;
+    try {
+      await map.style.addSource(
+        GeoJsonSource(id: _highlightSourceId, data: _emptyFeatureCollection),
+      );
+      await map.style.addLayer(
+        FillLayer(
+          id: _highlightFillLayerId,
+          sourceId: _highlightSourceId,
+          slot: 'top',
+          fillColor: const Color(0xFFFFEB3B).toARGB32(),
+          fillOpacity: 0.20,
+        ),
+      );
+      await map.style.addLayer(
+        LineLayer(
+          id: _highlightLineLayerId,
+          sourceId: _highlightSourceId,
+          slot: 'top',
+          lineColor: const Color(0xFFFFC400).toARGB32(),
+          lineWidth: 3.5,
+          lineOpacity: 0.95,
+        ),
+      );
+    } catch (e) {
+      debugPrint('Failed to add highlight layers: $e');
+      _highlightLayersAdded = false;
+    }
+  }
+
+  Future<void> _showBuildingHighlight(PlaceResult place) async {
+    await _ensureHighlightLayers();
+    final map = _map;
+    if (map == null) return;
+    final geojson = await _buildingService.fetchBuildingPolygon(
+      longitude: place.longitude,
+      latitude: place.latitude,
+    );
+    if (!mounted) return;
+    final data = geojson ?? _emptyFeatureCollection;
+    try {
+      final source =
+          await map.style.getSource(_highlightSourceId) as GeoJsonSource?;
+      if (source != null) await source.updateGeoJSON(data);
+    } catch (e) {
+      debugPrint('Failed to update highlight source: $e');
+    }
+  }
+
+  Future<void> _clearBuildingHighlight() async {
+    final map = _map;
+    if (map == null || !_highlightLayersAdded) return;
+    try {
+      final source =
+          await map.style.getSource(_highlightSourceId) as GeoJsonSource?;
+      if (source != null) await source.updateGeoJSON(_emptyFeatureCollection);
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        _viewportWidth = constraints.maxWidth;
-        _viewportHeight = constraints.maxHeight;
-        return Stack(
-          children: [
-            MapWidget(
-              key: const ValueKey('ph-map'),
-              // Standard style shows POIs, place labels and 3D landmarks
-              // (Google Maps-like) rather than just streets.
-              styleUri: MapboxStyles.STANDARD,
-              onMapCreated: _onMapCreated,
-              onStyleLoadedListener: (_) {
-                _styleLoaded = true;
-                _maybeFireReady();
-              },
-              // While editing, the pin is screen-anchored and must NOT move on
-              // pan/zoom; we only relabel it once the map settles (idle). Once
-              // locked, the pin is a native annotation, so nothing to do here.
-              onMapIdleListener: (_) => _handleMapIdle(),
-            ),
+    final hitPos = _dragging ? _dragScreen : _pinScreen;
+    return Stack(
+      children: [
+        MapWidget(
+          key: const ValueKey('ph-map'),
+          styleUri: MapboxStyles.STANDARD,
+          onMapCreated: _onMapCreated,
+          onStyleLoadedListener: (_) {
+            _styleLoaded = true;
+            _maybeFireReady();
+          },
+          // Keep the drag hit-area aligned with the (native) pin once the
+          // camera settles. The pin itself is glued natively — no wobble.
+          onMapIdleListener: (_) => _reprojectHitArea(),
+        ),
 
-            // Draggable Flutter pin + radar pulse while EDITING only. Once
-            // locked, native annotations take over (glued to the map).
-            if (_pinned != null && _markerPos != null && !_locked)
-              Positioned(
-                left: _markerPos!.x - _markerSize / 2,
-                top: _markerPos!.y - _markerSize / 2,
-                child: _buildMarker(),
-              ),
-          ],
-        );
-      },
+        // Invisible drag handle over the pin (only when editable).
+        if (_pinned != null && hitPos != null && !_locked)
+          Positioned(
+            left: hitPos.x - _hitSize / 2,
+            // Anchor near the pin body (its tip sits at the coordinate).
+            top: hitPos.y - _hitSize + 6,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onPanStart: _onPinPanStart,
+              onPanUpdate: _onPinPanUpdate,
+              onPanEnd: _onPinPanEnd,
+              child: const SizedBox(width: _hitSize, height: _hitSize),
+            ),
+          ),
+      ],
     );
   }
 
-  /// The screen position to draw the marker at: the live drag position while
-  /// dragging, otherwise the projected pin position.
-  ScreenCoordinate? get _markerPos => _dragScreen ?? _pinScreen;
-
-  Widget _buildMarker() {
-    return SizedBox(
-      width: _markerSize,
-      height: _markerSize,
-      child: Stack(
-        alignment: Alignment.center,
-        clipBehavior: Clip.none,
-        children: [
-          // Radar rings keep pulsing in every state (including once locked).
-          IgnorePointer(
-            child: RadarPulse(size: _markerSize),
-          ),
-          // Only the pin itself is draggable; its tip rests on the anchor.
-          // Dragging is disabled once locked, but the pin keeps its size.
-          Align(
-            alignment: Alignment.center,
-            child: Transform.translate(
-              offset: const Offset(0, -_pinHeight / 2),
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onPanStart: _locked ? null : _onPinPanStart,
-                onPanUpdate: _locked ? null : _onPinPanUpdate,
-                onPanEnd: _locked ? null : _onPinPanEnd,
-                child: MapPinGraphic(
-                  height: _pinHeight,
-                  dragging: _dragging,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  static const double _markerSize = 200;
-  static const double _pinHeight = 52;
+  static const double _hitSize = 64;
 }

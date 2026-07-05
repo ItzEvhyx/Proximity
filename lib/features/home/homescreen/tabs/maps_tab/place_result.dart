@@ -13,6 +13,8 @@ class PlaceResult {
     this.address,
     this.category,
     this.mapboxId,
+    this.distanceMeters,
+    this.isCurrentLocation = false,
   });
 
   final String name;
@@ -26,8 +28,49 @@ class PlaceResult {
   /// resolve its coordinates before it can be shown on the map.
   final String? mapboxId;
 
+  /// Straight-line distance from the user's current location, in meters. Null
+  /// when the user's location is unknown or not yet computed.
+  final double? distanceMeters;
+
+  /// True when this place represents the user's own (draggable) current
+  /// location pin rather than a searched destination.
+  final bool isCurrentLocation;
+
   /// True for `/suggest` results that must be retrieved to obtain coordinates.
   bool get needsRetrieve => mapboxId != null;
+
+  /// Returns a copy with selected fields overridden.
+  PlaceResult copyWith({
+    String? name,
+    String? address,
+    String? category,
+    double? longitude,
+    double? latitude,
+    String? mapboxId,
+    double? distanceMeters,
+    bool? isCurrentLocation,
+  }) {
+    return PlaceResult(
+      name: name ?? this.name,
+      address: address ?? this.address,
+      category: category ?? this.category,
+      longitude: longitude ?? this.longitude,
+      latitude: latitude ?? this.latitude,
+      mapboxId: mapboxId ?? this.mapboxId,
+      distanceMeters: distanceMeters ?? this.distanceMeters,
+      isCurrentLocation: isCurrentLocation ?? this.isCurrentLocation,
+    );
+  }
+
+  /// A short, human-friendly distance label ("120 m", "2.4 km") or null when
+  /// no distance is known.
+  String? get distanceLabel {
+    final meters = distanceMeters;
+    if (meters == null) return null;
+    if (meters < 1000) return '${meters.round()} m';
+    final km = meters / 1000;
+    return '${km.toStringAsFixed(km >= 10 ? 0 : 1)} km';
+  }
 
   /// A friendly, capitalized type label derived from [category]
   /// (e.g. "convenience" -> "Convenience Store").

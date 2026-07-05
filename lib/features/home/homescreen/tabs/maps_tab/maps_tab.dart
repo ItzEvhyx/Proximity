@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../homescreen_map_renderer.dart';
 import 'maps_controller.dart';
+import 'pinned_trip.dart';
 
 /// Maps tab: the interactive Philippines map with a floating search bar and a
 /// draggable info card sitting on top of it (behind the navbar).
@@ -45,7 +46,7 @@ class _BottomCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = this.controller;
-    if (controller == null) return _DraggableInfoCard();
+    if (controller == null) return const _DraggableInfoCard();
 
     return AnimatedBuilder(
       animation: controller,
@@ -62,7 +63,10 @@ class _BottomCard extends StatelessWidget {
             onEdit: controller.unlockPin,
           );
         }
-        return _DraggableInfoCard();
+        return _DraggableInfoCard(
+          trips: controller.pinnedHistory,
+          onDeleteTrip: controller.removeTrip,
+        );
       },
     );
   }
@@ -74,7 +78,7 @@ class _ConfirmLocationCard extends StatelessWidget {
   const _ConfirmLocationCard({
     required this.title,
     required this.subtitle,
-    required this.locked,
+    required this.locked, 
     required this.resolving,
     required this.onConfirm,
     required this.onCancel,
@@ -309,44 +313,14 @@ class _ConfirmButton extends StatelessWidget {
   }
 }
 
-/// A single past trip the user has taken. Placeholder model until real trip
-/// history is wired in.
-class _PastTrip {
-  const _PastTrip({
-    required this.locationName,
-    required this.date,
-    required this.time,
-    required this.distance,
-    required this.startingLocation,
-  });
-
-  final String locationName;
-  final String date;
-  final String time;
-  final String distance;
-  final String startingLocation;
-}
-
 /// White card that floats over the map. Starts at 30% of the screen height and
-/// can be dragged taller or shorter. Shows the user's past trips.
+/// can be dragged taller or shorter. Shows the user's recent pinned locations
+/// as "past trips" (the most recent [MapsController._maxHistory]).
 class _DraggableInfoCard extends StatelessWidget {
-  // Placeholder trips until history is fed in from the backend.
-  static const List<_PastTrip> _trips = [
-    _PastTrip(
-      locationName: 'Arthaland Pacific Tower',
-      date: '-',
-      time: '-',
-      distance: '-',
-      startingLocation: '-',
-    ),
-    _PastTrip(
-      locationName: 'ALTO Coffee Group',
-      date: '-',
-      time: '-',
-      distance: '-',
-      startingLocation: '-',
-    ),
-  ];
+  const _DraggableInfoCard({this.trips = const [], this.onDeleteTrip});
+
+  final List<PinnedTrip> trips;
+  final ValueChanged<PinnedTrip>? onDeleteTrip;
 
   @override
   Widget build(BuildContext context) {
@@ -420,15 +394,36 @@ class _DraggableInfoCard extends StatelessWidget {
                       thickness: 1,
                       height: 1,
                     ),
-                    // Trip rows, each followed by a divider.
-                    for (final trip in _trips) ...[
-                      _TripRow(trip: trip),
-                      const Divider(
-                        color: AppColors.textGrey,
-                        thickness: 1,
-                        height: 1,
-                      ),
-                    ],
+                    // Real trip rows from the user's pinned history, or an
+                    // empty-state hint when there are none yet.
+                    if (trips.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 28),
+                        child: Text(
+                          'No past trips yet. Confirm a location to see it here.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            color: AppColors.textGrey,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      )
+                    else
+                      for (final trip in trips) ...[
+                        _TripRow(
+                          trip: trip,
+                          onDelete: onDeleteTrip == null
+                              ? null
+                              : () => onDeleteTrip!(trip),
+                        ),
+                        const Divider(
+                          color: AppColors.textGrey,
+                          thickness: 1,
+                          height: 1,
+                        ),
+                      ],
                   ],
                 ),
               ),
@@ -442,52 +437,170 @@ class _DraggableInfoCard extends StatelessWidget {
 
 /// One past-trip entry: the location header with its details on the left and a
 /// "Reverse Trip" button on the right.
-class _TripRow extends StatelessWidget {
-  const _TripRow({required this.trip});
+///
+/// Deleting a trip plays a scale-down + fade "pop" before the row collapses
+/// and closes the gap, instead of just disappearing instantly.
+class _TripRow extends StatefulWidget {
+  const _TripRow({required this.trip, this.onDelete});
 
-  final _PastTrip trip;
+  final PinnedTrip trip;
+  final VoidCallback? onDelete;
+
+  @override
+  State<_TripRow> createState() => _TripRowState();
+}
+
+class _TripRowState extends State<_TripRow> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _scale;
+  late final Animation<double> _fade;
+  late final Animation<double> _collapse;
+
+  bool _deleting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 320),
+    );
+    // Pop: shrink with a little overshoot so it reads as a "pop" rather than
+    // a flat scale-down.
+    _scale = Tween<double>(begin: 1, end: 0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0, 0.65, curve: Curves.easeInBack),
+      ),
+    );
+    _fade = Tween<double>(begin: 1, end: 0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0, 0.55, curve: Curves.easeIn),
+      ),
+    );
+    // Once the pop has mostly played out, collapse the row's height so the
+    // rest of the list smoothly slides up to close the gap.
+    _collapse = Tween<double>(begin: 1, end: 0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.45, 1, curve: Curves.easeInOut),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleDelete() {
+    if (widget.onDelete == null || _deleting) return;
+    setState(() => _deleting = true);
+    _controller.forward().whenComplete(() {
+      widget.onDelete?.call();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  trip.locationName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    color: AppColors.textDark,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    height: 1.1,
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return ClipRect(
+          child: SizeTransition(
+            sizeFactor: _collapse,
+            axisAlignment: -1,
+            child: FadeTransition(
+              opacity: _fade,
+              child: ScaleTransition(
+                scale: _scale,
+                alignment: Alignment.center,
+                child: child,
+              ),
+            ),
+          ),
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.trip.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'Poppins',
+                      color: AppColors.textDark,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      height: 1.1,
+                    ),
                   ),
+                  const SizedBox(height: 6),
+                  _DetailLine(label: 'Date of Trip', value: widget.trip.dateLabel),
+                  _DetailLine(label: 'Time of Trip', value: widget.trip.timeLabel),
+                  _DetailLine(label: 'Distance', value: widget.trip.distanceLabel),
+                  _DetailLine(
+                    label: 'Starting Location',
+                    value: widget.trip.startLocationName ?? '-',
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Trash (upper-right) sits just above the reverse-trip button.
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _DeleteTripButton(
+                  onTap: widget.onDelete == null ? null : _handleDelete,
                 ),
-                const SizedBox(height: 6),
-                _DetailLine(label: 'Date of Trip', value: trip.date),
-                _DetailLine(label: 'Time of Trip', value: trip.time),
-                _DetailLine(label: 'Distance covered', value: trip.distance),
-                _DetailLine(
-                  label: 'Starting Location',
-                  value: trip.startingLocation,
+                const SizedBox(height: 8),
+                _ReverseTripButton(
+                  onTap: () {
+                    // TODO: wire up trip reversal once routing is implemented.
+                  },
                 ),
               ],
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Small red trash button to delete a saved trip from the history.
+class _DeleteTripButton extends StatelessWidget {
+  const _DeleteTripButton({this.onTap});
+
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.error.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: const Padding(
+          padding: EdgeInsets.all(8),
+          child: Icon(
+            Icons.delete_rounded,
+            color: AppColors.error,
+            size: 20,
           ),
-          const SizedBox(width: 12),
-          _ReverseTripButton(
-            onTap: () {
-              // TODO: wire up trip reversal once routing is implemented.
-            },
-          ),
-        ],
+        ),
       ),
     );
   }

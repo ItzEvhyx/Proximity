@@ -22,6 +22,7 @@ class LocationSearchBar extends StatefulWidget {
     this.onSubmitted,
     this.onMicTap,
     this.onSearchTap,
+    this.micActive = false,
   });
 
   final String hintText;
@@ -31,6 +32,10 @@ class LocationSearchBar extends StatefulWidget {
   final ValueChanged<String>? onSubmitted;
   final VoidCallback? onMicTap;
   final ValueChanged<String>? onSearchTap;
+
+  /// When true the mic is actively listening; shown in an accent "recording"
+  /// state.
+  final bool micActive;
 
   @override
   State<LocationSearchBar> createState() => _LocationSearchBarState();
@@ -46,7 +51,44 @@ class _LocationSearchBarState extends State<LocationSearchBar> {
       widget.focusNode ?? (_ownFocusNode ??= FocusNode());
 
   @override
+  void initState() {
+    super.initState();
+    _controller.addListener(_onStateChanged);
+    _focusNode.addListener(_onStateChanged);
+  }
+
+  @override
+  void didUpdateWidget(LocationSearchBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller?.removeListener(_onStateChanged);
+      _controller.addListener(_onStateChanged);
+    }
+    if (oldWidget.focusNode != widget.focusNode) {
+      oldWidget.focusNode?.removeListener(_onStateChanged);
+      _focusNode.addListener(_onStateChanged);
+    }
+  }
+
+  void _onStateChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// The clear (X) button shows when the field is focused and holds text, so
+  /// the user can wipe the whole entry in one tap.
+  bool get _showClear => _focusNode.hasFocus && _controller.text.isNotEmpty;
+
+  void _clear() {
+    _controller.clear();
+    widget.onChanged?.call('');
+    // Keep the field focused so the user can immediately type again.
+    _focusNode.requestFocus();
+  }
+
+  @override
   void dispose() {
+    _controller.removeListener(_onStateChanged);
+    _focusNode.removeListener(_onStateChanged);
     _ownController?.dispose();
     _ownFocusNode?.dispose();
     super.dispose();
@@ -85,6 +127,10 @@ class _LocationSearchBarState extends State<LocationSearchBar> {
               focusNode: _focusNode,
               onChanged: widget.onChanged,
               onSubmitted: widget.onSubmitted,
+              // Don't auto-unfocus on outside taps: that can swallow the first
+              // tap on a result row. Focus is dismissed explicitly on select /
+              // tap-away instead.
+              onTapOutside: (_) {},
               textInputAction: TextInputAction.search,
               cursorColor: AppColors.primary,
               maxLines: 1,
@@ -108,7 +154,15 @@ class _LocationSearchBarState extends State<LocationSearchBar> {
             ),
           ),
           const SizedBox(width: 8),
-          _ActionIcon(icon: Icons.mic_rounded, onTap: widget.onMicTap),
+          if (_showClear) ...[
+            _ActionIcon(icon: Icons.close_rounded, onTap: _clear),
+            const SizedBox(width: 10),
+          ],
+          _ActionIcon(
+            icon: widget.micActive ? Icons.mic : Icons.mic_rounded,
+            onTap: widget.onMicTap,
+            color: widget.micActive ? AppColors.error : AppColors.primary,
+          ),
           const SizedBox(width: 10),
           _ActionIcon(
             icon: Icons.search_rounded,
@@ -128,17 +182,18 @@ class _LocationSearchBarState extends State<LocationSearchBar> {
 }
 
 class _ActionIcon extends StatelessWidget {
-  const _ActionIcon({required this.icon, this.onTap});
+  const _ActionIcon({required this.icon, this.onTap, this.color});
 
   final IconData icon;
   final VoidCallback? onTap;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: Icon(icon, color: AppColors.primary, size: 30),
+      child: Icon(icon, color: color ?? AppColors.primary, size: 30),
     );
   }
 }

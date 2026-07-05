@@ -14,6 +14,8 @@ class SearchResultsDropdown extends StatelessWidget {
     required this.showingNearby,
     required this.onSelect,
     this.error,
+    this.collapsed = false,
+    this.onToggleCollapse,
   });
 
   final List<PlaceResult> results;
@@ -21,6 +23,10 @@ class SearchResultsDropdown extends StatelessWidget {
   final bool showingNearby;
   final String? error;
   final ValueChanged<PlaceResult> onSelect;
+
+  /// When true only the header bar shows, with a chevron to reopen the list.
+  final bool collapsed;
+  final VoidCallback? onToggleCollapse;
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +45,18 @@ class SearchResultsDropdown extends StatelessWidget {
         ],
       ),
       clipBehavior: Clip.antiAlias,
-      child: _buildBody(),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _HeaderBar(
+            label: showingNearby ? 'Nearby places' : 'Results',
+            collapsed: collapsed,
+            onToggle: onToggleCollapse,
+          ),
+          if (!collapsed) Flexible(child: _buildBody()),
+        ],
+      ),
     );
   }
 
@@ -73,49 +90,76 @@ class SearchResultsDropdown extends StatelessWidget {
       );
     }
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (showingNearby) const _DropdownHeader(label: 'Nearby places'),
-        Flexible(
-          child: ListView.separated(
-            padding: EdgeInsets.zero,
-            shrinkWrap: true,
-            itemCount: results.length,
-            separatorBuilder: (_, _) => const Divider(
-              height: 1,
-              thickness: 1,
-              indent: 56,
-              color: AppColors.border,
-            ),
-            itemBuilder: (context, index) {
-              final place = results[index];
-              return _ResultRow(place: place, onTap: () => onSelect(place));
-            },
-          ),
-        ),
-      ],
+    return ListView.separated(
+      padding: EdgeInsets.zero,
+      shrinkWrap: true,
+      itemCount: results.length,
+      separatorBuilder: (_, _) => const Divider(
+        height: 1,
+        thickness: 1,
+        indent: 56,
+        color: AppColors.border,
+      ),
+      itemBuilder: (context, index) {
+        final place = results[index];
+        return _ResultRow(place: place, onTap: () => onSelect(place));
+      },
     );
   }
 }
 
-class _DropdownHeader extends StatelessWidget {
-  const _DropdownHeader({required this.label});
+/// Header bar shown above the results, carrying the section label and a
+/// chevron button that hides (collapses) or reopens the list.
+class _HeaderBar extends StatelessWidget {
+  const _HeaderBar({
+    required this.label,
+    required this.collapsed,
+    this.onToggle,
+  });
+
   final String label;
+  final bool collapsed;
+  final VoidCallback? onToggle;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 14, 18, 6),
-      child: Text(
-        label.toUpperCase(),
-        style: const TextStyle(
-          fontFamily: 'Inter',
-          color: AppColors.textGrey,
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.6,
+    return InkWell(
+      onTap: onToggle,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 12, 10, 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                label.toUpperCase(),
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  color: AppColors.textGrey,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.6,
+                ),
+              ),
+            ),
+            Icon(
+              collapsed
+                  ? Icons.keyboard_arrow_down_rounded
+                  : Icons.keyboard_arrow_up_rounded,
+              color: AppColors.primary,
+              size: 24,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              collapsed ? 'Show' : 'Hide',
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                color: AppColors.primary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 6),
+          ],
         ),
       ),
     );
@@ -179,6 +223,30 @@ class _ResultRow extends StatelessWidget {
                       height: 1.25,
                     ),
                   ),
+                  // Distance from the user's current location, bottom-left.
+                  if (place.distanceLabel != null) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.near_me_rounded,
+                          size: 13,
+                          color: AppColors.primary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${place.distanceLabel} away',
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            color: AppColors.primary,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),

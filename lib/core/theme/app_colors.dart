@@ -37,6 +37,9 @@ class AppColors {
   /// Error accent for invalid fields and error snackbars (Colors.redAccent).
   static const Color error = Color(0xFFFF5252);
 
+  /// Red accent for the user's current-location pin and its radar rings.
+  static const Color currentLocation = Color(0xFFE53935);
+
   /// Dialog barrier scrim (Colors.black26).
   static const Color scrim = Color(0x42000000);
 }
