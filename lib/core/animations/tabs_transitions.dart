@@ -32,10 +32,16 @@ class _TabsTransitionState extends State<TabsTransition>
   int _previousIndex = 0;
   int _direction = 1;
 
+  /// Tracks which tab indices have been visited at least once. Tabs not in
+  /// this set render as SizedBox.shrink() (zero build cost) until first shown.
+  final Set<int> _builtTabs = {};
+
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.index;
+    // The initial tab is immediately visible — mark it as built.
+    _builtTabs.add(_currentIndex);
     _controller = AnimationController(
       vsync: this,
       duration: widget.duration,
@@ -86,22 +92,31 @@ class _TabsTransitionState extends State<TabsTransition>
     final isPrevious = index == _previousIndex && animating;
     final visible = isCurrent || isPrevious;
 
-    double dx = 0;
-    if (isCurrent) {
-      dx = _direction * (1 - t); // slide in from the target side
-    } else if (isPrevious) {
-      dx = -_direction * t; // slide out the opposite way
+    // Lazy building: track which tabs have ever been visible. Once a tab
+    // has been built once, it stays in the tree (state preserved). Tabs
+    // that have NEVER been visited get an empty SizedBox — zero build cost.
+    if (isCurrent && !_builtTabs.contains(index)) {
+      _builtTabs.add(index);
     }
 
-    // Uniform wrapper for every tab (only the flags/offset change) so element
-    // identity is stable and each tab keeps its state across rebuilds.
+    final hasBeenBuilt = _builtTabs.contains(index);
+
+    double dx = 0;
+    if (isCurrent) {
+      dx = _direction * (1 - t);
+    } else if (isPrevious) {
+      dx = -_direction * t;
+    }
+
     return Offstage(
       offstage: !visible,
       child: IgnorePointer(
         ignoring: !isCurrent,
         child: FractionalTranslation(
           translation: Offset(dx, 0),
-          child: widget.children[index],
+          child: hasBeenBuilt
+              ? widget.children[index]
+              : const SizedBox.shrink(),
         ),
       ),
     );

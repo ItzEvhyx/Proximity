@@ -15,15 +15,21 @@ enum RouteMode { matrix, finder }
 /// the Finder content depending on [mode]. Finder content isn't built out
 /// yet.
 class RoutesTab extends StatelessWidget {
-  const RoutesTab({super.key, this.mode = RouteMode.matrix});
+  const RoutesTab({super.key, this.mode = RouteMode.matrix, this.active = false});
 
   final RouteMode mode;
+
+  /// Whether the Routes tab is the one currently on screen. All tabs are kept
+  /// alive by the home shell's [TabsTransition], so this flag lets content
+  /// defer expensive work (e.g. fetching Cloudinary images) until the user
+  /// actually navigates here.
+  final bool active;
 
   @override
   Widget build(BuildContext context) {
     switch (mode) {
       case RouteMode.matrix:
-        return const FareMatrixTab();
+        return FareMatrixTab(active: active);
       case RouteMode.finder:
         return const SizedBox.shrink();
     }

@@ -4,6 +4,7 @@ import 'package:video_player/video_player.dart';
 
 import 'core/animations/screen_transitions.dart';
 import 'core/config/env.dart';
+import 'core/global_services/cloudinary_services.dart';
 import 'core/network/network_service.dart';
 import 'core/router/app_router.dart';
 import 'core/session/user_session.dart';
@@ -19,6 +20,10 @@ Future<void> main() async {
   // Load secrets from .env.local, then connect to Supabase before the app
   // runs so the client is ready for any query later on.
   await Env.load();
+
+  // Prepare Cloudinary URL delivery (reads the cloud name from Env) so
+  // network-hosted images can be built anywhere in the app.
+  CloudinaryService.instance.init();
 
   // Hand the Mapbox Maps SDK its public token so map tiles can load.
   MapboxOptions.setAccessToken(Env.mapboxPublicToken);

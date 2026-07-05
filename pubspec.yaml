@@ -23,6 +23,9 @@ dependencies:
   geolocator: ^14.0.3
   http: ^1.6.0
   speech_to_text: ^7.0.0
+  # Disk + memory caching for network images (Cloudinary-hosted train photos),
+  # with placeholder support so we can show skeleton loading while fetching.
+  cached_network_image: ^3.4.1
 
 dev_dependencies:
   flutter_test:

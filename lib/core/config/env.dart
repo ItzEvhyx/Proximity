@@ -37,6 +37,22 @@ class Env {
   /// at start-up so it can load map tiles.
   static String get mapboxPublicToken => _require('MAPBOX_PUBLIC_TOKEN');
 
+  /// Cloudinary cloud name — the only value needed to build public image
+  /// delivery URLs (`https://res.cloudinary.com/<cloudName>/...`).
+  static String get cloudinaryCloudName => _require('CLOUDINARY_CLOUD_NAME');
+
+  /// Default Cloudinary folder/preset used when uploading new assets.
+  static String get cloudinaryUploadPreset =>
+      _require('CLOUDINARY_UPLOAD_PRESET_FOLDER');
+
+  /// Cloudinary API key — only required for authenticated Admin/Upload API
+  /// calls (not for public image delivery).
+  static String get cloudinaryApiKey => _require('CLOUDINARY_API_KEY');
+
+  /// Cloudinary API secret — only required for signed/authenticated API
+  /// calls. Keep this off the client for anything user-facing.
+  static String get cloudinaryApiSecret => _require('CLOUDINARY_API_SECRET');
+
   /// Reads [key] from the loaded env, throwing a clear error if it is missing
   /// so misconfiguration surfaces immediately instead of failing later.
   static String _require(String key) {

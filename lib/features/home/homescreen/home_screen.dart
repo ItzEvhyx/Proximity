@@ -155,7 +155,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final tabs = <Widget>[
       MapsTab(onMapReady: _handleMapReady, controller: _mapsController),
-      RoutesTab(mode: _routeMode),
+      RoutesTab(mode: _routeMode, active: isRoutesTab),
       const HistoryTab(),
       const ProfileTab(),
     ];
