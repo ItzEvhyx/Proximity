@@ -38,6 +38,8 @@ class CloudinaryService {
   static const String lrt1TrainPublicId = 'lrt1_train_img_vsoz9g';
   static const String lrt2TrainPublicId = 'lrt2_train_img_mca45c';
   static const String mrtTrainPublicId = 'mrt_train_img_rnolzz';
+  static const String trainRoutesPublicId = 'train_routes_img_grswoy';
+  static const String finderMapPublicId = 'finder_map_img_eckw2n';
 
   /// Delivery URL for the LRT-1 train photo.
   String get lrt1TrainUrl => imageUrl(lrt1TrainPublicId, width: 400);
@@ -47,6 +49,12 @@ class CloudinaryService {
 
   /// Delivery URL for the MRT train photo.
   String get mrtTrainUrl => imageUrl(mrtTrainPublicId, width: 400);
+
+  /// Delivery URL for the rail transit route map.
+  String get trainRoutesUrl => imageUrl(trainRoutesPublicId, width: 600);
+
+  /// Delivery URL for the Way Finder map image.
+  String get finderMapUrl => imageUrl(finderMapPublicId, width: 300);
 
   /// Builds an optimized delivery URL for [publicId].
   ///

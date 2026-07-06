@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../../core/theme/app_colors.dart';
+import '../../../../../../core/widgets/asset_icon.dart';
 
 /// Green gradient header card — "Fare Matrix" title + money icon + description.
 /// Fully static, no state, no animations. Renders in a single paint pass.
@@ -39,9 +40,10 @@ class FareMatrixDesc extends StatelessWidget {
                     color: AppColors.white,
                   ),
                 ),
-                Image.asset(
+                const AssetIcon(
                   'public/assets/icons/money_icon.png',
-                  width: 32,
+                  size: 32,
+                  width: 40,
                   height: 32,
                   color: AppColors.white,
                 ),

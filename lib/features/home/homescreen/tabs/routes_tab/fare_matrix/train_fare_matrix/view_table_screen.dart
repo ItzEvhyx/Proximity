@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:proximity/core/theme/app_colors.dart';
+import 'package:proximity/core/widgets/asset_icon.dart';
 import 'package:proximity/features/home/homescreen/tabs/routes_tab/fare_matrix/fare_data_models/train_fares_data_models.dart';
-import 'package:proximity/features/home/homescreen/tabs/routes_tab/fare_matrix/transit_categories.dart';
+import 'package:proximity/features/home/homescreen/tabs/routes_tab/fare_matrix/train_fare_matrix/transit_categories.dart';
 
 /// Full-screen landscape fare table for the selected rail line.
 ///
@@ -146,11 +147,10 @@ class _ViewTableScreenState extends State<ViewTableScreen> {
               color: AppColors.white.withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Center(
-              child: Image.asset(
+            child: const Center(
+              child: AssetIcon(
                 'public/assets/icons/train_icon.png',
-                width: 22,
-                height: 22,
+                size: 22,
                 color: AppColors.white,
               ),
             ),

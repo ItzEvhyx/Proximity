@@ -1,12 +1,28 @@
 // tricycle_fares_data_models.dart
 //
-// Static fare data for Philippine tricycles and pedicabs.
+// Static fare data for Philippine tricycles, e-trikes, and pedicabs.
 // LGU-regulated (per city/municipality), NOT LTFRB.
 //
 // Sources:
-//   - City of Manila Ordinance (in effect since Oct. 25, 2023) — used as
-//     the reference example
-//   - https://www.pna.gov.ph/articles/1271201
+//   - City of Manila, Ordinance No. 8979, Series of 2022
+//     (New Tri-Wheel Fare Matrix — Tricycle · E-trike · Pedicab)
+//   - Manila Public Information Office / Manila Traffic Parking Bureau
+//     https://www.facebook.com/ManilaPIO/posts/667583042222154
+//
+// Standard Fare Matrix (per passenger):
+//   Distance Traveled  │  Fare Per Passenger
+//   0 to 1 km          │  ₱16.00
+//   1 km + 500 m       │  ₱21.00
+//   1 km + 1 km        │  ₱26.00
+//   1 km + 1 km + 500m │  ₱31.00
+//   1 km + 2 km        │  ₱36.00
+//
+// Fare computation (tricycle & pedicab, per one passenger):
+//   ₱16.00 — First 1 kilometer
+//   +₱5.00 — Every succeeding 500 meters
+//
+// Fare computation (e-trike, per one passenger):
+//   ₱20.00 — Flat rate within its approved route
 //
 // Discount: Students, Senior Citizens, and PWDs get 20% off total fare
 // (nationwide mandate regardless of LGU).
@@ -14,22 +30,24 @@
 // IMPORTANT: Tricycle and pedicab fares are NOT standardized nationwide.
 // Each city or municipality sets its own fare matrix through local
 // ordinance, so actual rates in your area may differ significantly from
-// this example. Common patterns seen across LGUs:
-//   - Minimum/base fare: ₱10 – ₱25 depending on the city
-//   - Per-km or per-500m increments: ₱2 – ₱10
-//   - "Special trip" (private hire, whole tricycle): ~3× regular fare
-//
-// Check with your city's Tricycle Regulatory Unit or Traffic Management
-// Office for the exact posted fare matrix in your area.
+// this example. Check with your city's Tricycle Regulatory Unit or Traffic
+// Management Office for the exact posted fare matrix in your area.
+
+import 'bus_fares_data_models.dart';
 
 /// Tricycle / pedicab subtypes.
-enum TricycleType { tricycle, pedicab, eTrike }
+enum TricycleType { tricycle, eTrike }
 
 extension TricycleTypeDisplay on TricycleType {
   String get label => switch (this) {
         TricycleType.tricycle => 'Tricycle',
-        TricycleType.pedicab => 'Pedicab',
         TricycleType.eTrike => 'E-Trike',
+      };
+
+  /// Chip label shown in the payment indicator selector.
+  String get chipLabel => switch (this) {
+        TricycleType.tricycle => 'Tricycle',
+        TricycleType.eTrike => 'E - Trike',
       };
 }
 
@@ -86,14 +104,30 @@ class TricycleFareConfig {
   /// Special trip fare (private hire, whole tricycle).
   double specialTripFare(double distanceMeters) =>
       regularFare(distanceMeters) * specialTripMultiplier;
+
+  /// Converts to a [BusFareConfig] for use with the shared FareRateTable.
+  /// Tricycle uses base fare for first 1 km, then per-increment rate.
+  /// We approximate it as base-fare style with per-km = perIncrementRate
+  /// scaled to km equivalent.
+  BusFareConfig toBusFareConfig() {
+    if (isFlat) {
+      return BusFareConfig(flatPerKmRate: flatFare);
+    }
+    return BusFareConfig(
+      baseFare: baseFare,
+      baseDistanceKm: 1.0,
+      perKmRate: perIncrementRate,
+      discountMultiplier: discountMultiplier,
+    );
+  }
 }
 
 /// Central access point for tricycle fare data (Manila example).
 class TricycleFareData {
   TricycleFareData._();
 
-  // ── Tricycle / Pedicab (Manila example) ─────────────────────────────────
-  // First km: ₱16.00 | Per succeeding 500m: ₱5.00
+  // ── Tricycle (Manila example) ───────────────────────────────────────────
+  // First 1 km: ₱16.00 | Per succeeding 500m: ₱5.00
   static const tricycleManila = TricycleFareConfig(
     baseFare: 16.00,
     perIncrementRate: 5.00,
@@ -109,7 +143,26 @@ class TricycleFareData {
   /// Returns the fare config for a given tricycle type (Manila defaults).
   static TricycleFareConfig configFor(TricycleType type) => switch (type) {
         TricycleType.tricycle => tricycleManila,
-        TricycleType.pedicab => tricycleManila, // same rate as tricycle
         TricycleType.eTrike => eTrike,
       };
+
+  /// "How It Works" bullet points for Tricycle transit.
+  static const List<HowItWorksPoint> howItWorks = [
+    HowItWorksPoint(
+      icon: HowItWorksIcon.money,
+      text: 'Set per city/municipality (LGU) — not the LTFRB',
+    ),
+    HowItWorksPoint(
+      icon: HowItWorksIcon.plus,
+      text: 'Rates vary a lot depending on where you are',
+    ),
+  ];
+
+  /// Important notes shown at the bottom of the tricycle fare screen.
+  static const List<String> importantNotes = [
+    'Example uses Manila\'s posted rates. Tricycle/pedicab fares are NOT '
+        'standardized nationwide — check your city\'s Tricycle Regulatory Unit '
+        'for the exact local matrix. Hired "special trips" usually cost ~3x '
+        'the regular fare.',
+  ];
 }

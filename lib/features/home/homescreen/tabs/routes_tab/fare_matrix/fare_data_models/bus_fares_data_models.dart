@@ -16,6 +16,10 @@
 // the more commonly cited figure. Verify against LTFRB's official posted
 // fare guide before final use.
 
+import 'package:flutter/material.dart';
+
+import '../../../../../../../core/widgets/asset_icon.dart';
+
 /// Bus subtypes with different fare structures.
 enum BusType {
   cityOrdinary,
@@ -43,6 +47,16 @@ extension BusTypeDisplay on BusType {
         BusType.provincialSuperDeluxe => 'Super Deluxe',
         BusType.provincialDeluxe => 'Deluxe',
         BusType.provincialLuxury => 'Luxury',
+      };
+
+  /// Chip label shown in the payment indicator selector.
+  String get chipLabel => switch (this) {
+        BusType.cityOrdinary => 'City · Ordinary',
+        BusType.cityAircon => 'City · Aircon',
+        BusType.provincialOrdinary => 'Provincial · Ordinary',
+        BusType.provincialSuperDeluxe => 'Provincial · Super Deluxe',
+        BusType.provincialDeluxe => 'Provincial · Deluxe',
+        BusType.provincialLuxury => 'Provincial · Luxury',
       };
 }
 
@@ -144,4 +158,80 @@ class BusFareData {
         BusType.provincialDeluxe => provincialDeluxe,
         BusType.provincialLuxury => provincialLuxury,
       };
+
+  /// "How It Works" bullet points for Bus transit.
+  static const List<HowItWorksPoint> howItWorks = [
+    HowItWorksPoint(
+      icon: HowItWorksIcon.money,
+      text: 'Base fare covers the first 5 km',
+    ),
+    HowItWorksPoint(
+      icon: HowItWorksIcon.plus,
+      text: 'Extra per-km rate applies beyond that',
+    ),
+    HowItWorksPoint(
+      icon: HowItWorksIcon.diamond,
+      text: 'Deluxe & Luxury use a flat per-km rate — no separate base',
+    ),
+    HowItWorksPoint(
+      icon: HowItWorksIcon.discount,
+      text: '20% discount for Students, Seniors & PWDs',
+    ),
+  ];
+
+  /// Important notes shown at the bottom of the bus fare screen.
+  static const List<String> importantNotes = [
+    'Effective Mar 19, 2026 (city/Metro Manila) and Mar 14, 2026 '
+        '(provincial). Aircon city bus succeeding-km rate varied slightly '
+        'across sources during rollout — verify against the official LTFRB '
+        'fare guide.',
+  ];
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HOW IT WORKS DATA MODEL
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Icon type for a "How It Works" bullet point.
+enum HowItWorksIcon {
+  /// Money icon (base fare) — uses the money_icon.png asset.
+  money,
+
+  /// Plus icon (extra per-km) — uses Icons.add from Material.
+  plus,
+
+  /// Diamond icon (deluxe/luxury) — uses Icons.diamond from Material.
+  diamond,
+
+  /// Person/profile icon (discount) — uses Icons.groups from Material.
+  discount,
+}
+
+/// A single bullet point in the "How It Works" card.
+class HowItWorksPoint {
+  final HowItWorksIcon icon;
+  final String text;
+
+  const HowItWorksPoint({required this.icon, required this.text});
+}
+
+/// Returns the [Widget] for a [HowItWorksIcon].
+Widget howItWorksIconWidget(HowItWorksIcon icon, {double size = 22}) {
+  const color = Color(0xFF019D43); // AppColors.primary
+  switch (icon) {
+    case HowItWorksIcon.money:
+      return AssetIcon(
+        'public/assets/icons/money_icon.png',
+        size: size,
+        width: size * 1.3,
+        height: size,
+        color: color,
+      );
+    case HowItWorksIcon.plus:
+      return Icon(Icons.add_rounded, size: size, color: color);
+    case HowItWorksIcon.diamond:
+      return Icon(Icons.diamond_outlined, size: size, color: color);
+    case HowItWorksIcon.discount:
+      return Icon(Icons.groups_rounded, size: size, color: color);
+  }
 }

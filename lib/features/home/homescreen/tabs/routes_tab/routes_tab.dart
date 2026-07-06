@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../../core/theme/app_colors.dart';
 import 'fare_matrix/fare_matrix_tab.dart';
+import 'way_finder/way_finder_tab.dart';
 
 /// Which mode the routes tab is currently showing.
 ///
@@ -15,15 +16,20 @@ enum RouteMode { matrix, finder }
 /// the Finder content depending on [mode]. Finder content isn't built out
 /// yet.
 class RoutesTab extends StatelessWidget {
-  const RoutesTab({super.key, this.mode = RouteMode.matrix, this.active = false});
+  const RoutesTab({
+    super.key,
+    this.mode = RouteMode.matrix,
+    this.active = false,
+    this.wayFinderKey,
+  });
 
   final RouteMode mode;
 
-  /// Whether the Routes tab is the one currently on screen. All tabs are kept
-  /// alive by the home shell's [TabsTransition], so this flag lets content
-  /// defer expensive work (e.g. fetching Cloudinary images) until the user
-  /// actually navigates here.
+  /// Whether the Routes tab is the one currently on screen.
   final bool active;
+
+  /// Optional key passed to the WayFinderTab for external method access.
+  final GlobalKey<WayFinderTabState>? wayFinderKey;
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +37,7 @@ class RoutesTab extends StatelessWidget {
       case RouteMode.matrix:
         return FareMatrixTab(active: active);
       case RouteMode.finder:
-        return const SizedBox.shrink();
+        return WayFinderTab(key: wayFinderKey, active: active);
     }
   }
 }

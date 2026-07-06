@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/widgets/asset_icon.dart';
 import '../../homescreen_map_renderer.dart';
 import 'maps_controller.dart';
 import 'pinned_trip.dart';
@@ -380,11 +381,9 @@ class _DraggableInfoCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        Image.asset(
+                        const AssetIcon(
                           'public/assets/icons/bus_icon.png',
-                          width: 30,
-                          height: 30,
-                          fit: BoxFit.contain,
+                          size: 30,
                         ),
                       ],
                     ),
@@ -511,7 +510,6 @@ class _TripRowState extends State<_TripRow> with SingleTickerProviderStateMixin 
         return ClipRect(
           child: SizeTransition(
             sizeFactor: _collapse,
-            axisAlignment: -1,
             child: FadeTransition(
               opacity: _fade,
               child: ScaleTransition(
@@ -698,13 +696,10 @@ class _ReverseTripButton extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 7),
-              Image.asset(
+              const AssetIcon(
                 'public/assets/icons/revert_icon.png',
-                width: 15,
-                height: 15,
-                fit: BoxFit.contain,
+                size: 15,
                 color: AppColors.white,
-                colorBlendMode: BlendMode.srcIn,
               ),
             ],
           ),

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:proximity/core/theme/app_colors.dart';
+import 'package:proximity/core/widgets/asset_icon.dart';
 import 'package:proximity/core/widgets/card_dropshadow.dart';
-import 'package:proximity/features/home/homescreen/tabs/routes_tab/fare_matrix/payment_indicator.dart';
+import 'package:proximity/features/home/homescreen/tabs/routes_tab/fare_matrix/train_fare_matrix/payment_indicator.dart';
 import 'package:proximity/features/home/homescreen/tabs/routes_tab/fare_matrix/fare_data_models/train_fares_data_models.dart';
-import 'package:proximity/features/home/homescreen/tabs/routes_tab/fare_matrix/transit_categories.dart';
+import 'package:proximity/features/home/homescreen/tabs/routes_tab/fare_matrix/train_fare_matrix/transit_categories.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MAPPING: FareCategory → RailLine
@@ -300,10 +301,9 @@ class _StationPickerModalState extends State<_StationPickerModal> {
             ),
             child: Row(
               children: [
-                Image.asset(
+                const AssetIcon(
                   'public/assets/icons/train_icon.png',
-                  width: 18,
-                  height: 18,
+                  size: 18,
                   color: AppColors.white,
                 ),
                 const SizedBox(width: 10),
@@ -342,9 +342,10 @@ class _StationPickerModalState extends State<_StationPickerModal> {
                 return GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () {
+                    final nav = Navigator.of(context);
                     setState(() => _selected = station);
                     Future.delayed(const Duration(milliseconds: 150), () {
-                      if (mounted) Navigator.of(context).pop(station);
+                      if (mounted) nav.pop(station);
                     });
                   },
                   child: Container(
@@ -438,10 +439,9 @@ class _SwapButton extends StatelessWidget {
               color: AppColors.primary,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Image.asset(
+            child: const AssetIcon(
               'public/assets/icons/revert_icon.png',
-              width: 20,
-              height: 20,
+              size: 20,
               color: AppColors.white,
             ),
           ),

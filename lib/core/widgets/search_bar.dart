@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import 'asset_icon.dart';
 
 /// Floating location search bar shared by the Maps and Routes tabs.
 ///
@@ -23,6 +24,7 @@ class LocationSearchBar extends StatefulWidget {
     this.onMicTap,
     this.onSearchTap,
     this.micActive = false,
+    this.disabled = false,
   });
 
   final String hintText;
@@ -36,6 +38,9 @@ class LocationSearchBar extends StatefulWidget {
   /// When true the mic is actively listening; shown in an accent "recording"
   /// state.
   final bool micActive;
+
+  /// When true, the search bar is greyed out and non-interactive.
+  final bool disabled;
 
   @override
   State<LocationSearchBar> createState() => _LocationSearchBarState();
@@ -96,86 +101,92 @@ class _LocationSearchBarState extends State<LocationSearchBar> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 52,
-      padding: const EdgeInsets.symmetric(horizontal: 18),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x26000000),
-            blurRadius: 16,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Image.asset(
-            'public/assets/icons/alarm_clock_icon.png',
-            width: 30,
-            height: 30,
-            fit: BoxFit.contain,
-            color: AppColors.primary,
-            colorBlendMode: BlendMode.srcIn,
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: TextField(
-              controller: _controller,
-              focusNode: _focusNode,
-              onChanged: widget.onChanged,
-              onSubmitted: widget.onSubmitted,
-              // Don't auto-unfocus on outside taps: that can swallow the first
-              // tap on a result row. Focus is dismissed explicitly on select /
-              // tap-away instead.
-              onTapOutside: (_) {},
-              textInputAction: TextInputAction.search,
-              cursorColor: AppColors.primary,
-              maxLines: 1,
-              style: const TextStyle(
-                fontFamily: 'Poppins',
-                color: AppColors.textDark,
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
+    final isDisabled = widget.disabled;
+    final iconColor = isDisabled
+        ? AppColors.hintGrey.withValues(alpha: 0.5)
+        : AppColors.primary;
+
+    return Opacity(
+      opacity: isDisabled ? 0.5 : 1.0,
+      child: IgnorePointer(
+        ignoring: isDisabled,
+        child: Container(
+          height: 52,
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x26000000),
+                blurRadius: 16,
+                offset: Offset(0, 4),
               ),
-              decoration: InputDecoration(
-                isCollapsed: true,
-                border: InputBorder.none,
-                hintText: widget.hintText,
-                hintStyle: const TextStyle(
-                  fontFamily: 'Poppins',
-                  color: AppColors.hintGrey,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
+            ],
+          ),
+          child: Row(
+            children: [
+              AssetIcon(
+                'public/assets/icons/alarm_clock_icon.png',
+                size: 30,
+                color: iconColor,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: TextField(
+                  controller: _controller,
+                  focusNode: _focusNode,
+                  onChanged: widget.onChanged,
+                  onSubmitted: widget.onSubmitted,
+                  onTapOutside: (_) {},
+                  textInputAction: TextInputAction.search,
+                  cursorColor: AppColors.primary,
+                  maxLines: 1,
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    color: AppColors.textDark,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  decoration: InputDecoration(
+                    isCollapsed: true,
+                    border: InputBorder.none,
+                    hintText: widget.hintText,
+                    hintStyle: const TextStyle(
+                      fontFamily: 'Poppins',
+                      color: AppColors.hintGrey,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
               ),
-            ),
+              const SizedBox(width: 8),
+              if (_showClear) ...[
+                _ActionIcon(icon: Icons.close_rounded, onTap: _clear),
+                const SizedBox(width: 10),
+              ],
+              _ActionIcon(
+                icon: widget.micActive ? Icons.mic : Icons.mic_rounded,
+                onTap: widget.onMicTap,
+                color: widget.micActive ? AppColors.error : iconColor,
+              ),
+              const SizedBox(width: 10),
+              _ActionIcon(
+                icon: Icons.search_rounded,
+                color: iconColor,
+                onTap: () {
+                  final text = _controller.text;
+                  if (widget.onSearchTap != null) {
+                    widget.onSearchTap!(text);
+                  } else {
+                    widget.onSubmitted?.call(text);
+                  }
+                },
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          if (_showClear) ...[
-            _ActionIcon(icon: Icons.close_rounded, onTap: _clear),
-            const SizedBox(width: 10),
-          ],
-          _ActionIcon(
-            icon: widget.micActive ? Icons.mic : Icons.mic_rounded,
-            onTap: widget.onMicTap,
-            color: widget.micActive ? AppColors.error : AppColors.primary,
-          ),
-          const SizedBox(width: 10),
-          _ActionIcon(
-            icon: Icons.search_rounded,
-            onTap: () {
-              final text = _controller.text;
-              if (widget.onSearchTap != null) {
-                widget.onSearchTap!(text);
-              } else {
-                widget.onSubmitted?.call(text);
-              }
-            },
-          ),
-        ],
+        ),
       ),
     );
   }

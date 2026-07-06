@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import '../widgets/asset_icon.dart';
 
 /// Floating bottom navigation bar.
 ///
@@ -182,26 +183,20 @@ class _TabCell extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          Image.asset(
+          AssetIcon(
             item.asset,
-            width: _iconSize,
-            height: _iconSize,
-            fit: BoxFit.contain,
+            size: _iconSize,
             color: AppColors.primary,
-            colorBlendMode: BlendMode.srcIn,
           ),
           // White version crossfades in when the tab is selected.
           AnimatedOpacity(
             opacity: selected ? 1 : 0,
             duration: duration,
             curve: curve,
-            child: Image.asset(
+            child: AssetIcon(
               item.asset,
-              width: _iconSize,
-              height: _iconSize,
-              fit: BoxFit.contain,
+              size: _iconSize,
               color: AppColors.white,
-              colorBlendMode: BlendMode.srcIn,
             ),
           ),
         ],

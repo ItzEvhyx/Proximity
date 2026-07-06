@@ -17,6 +17,8 @@
 // distance. A rate increase petition (filed March 2026) remains under
 // LTFRB review and could change these figures once decided.
 
+import 'bus_fares_data_models.dart';
+
 /// UV Express subtypes.
 enum UvExpressType { traditional, modernized }
 
@@ -27,6 +29,12 @@ extension UvExpressTypeDisplay on UvExpressType {
       };
 
   String get shortLabel => switch (this) {
+        UvExpressType.traditional => 'Traditional',
+        UvExpressType.modernized => 'Modernized',
+      };
+
+  /// Chip label shown in the payment indicator selector.
+  String get chipLabel => switch (this) {
         UvExpressType.traditional => 'Traditional',
         UvExpressType.modernized => 'Modernized',
       };
@@ -51,6 +59,13 @@ class UvExpressFareConfig {
   /// Computes the discounted fare (20% off regular).
   double discountedFare(double distanceKm) =>
       regularFare(distanceKm) * discountMultiplier;
+
+  /// Converts to a [BusFareConfig] so we can reuse the same FareRateTable
+  /// widget. UV Express is always flat-rate.
+  BusFareConfig toBusFareConfig() => BusFareConfig(
+        flatPerKmRate: perKmRate,
+        discountMultiplier: discountMultiplier,
+      );
 }
 
 /// Central access point for UV Express fare data.
@@ -74,4 +89,29 @@ class UvExpressFareData {
         UvExpressType.traditional => traditional,
         UvExpressType.modernized => modernized,
       };
+
+  /// "How It Works" bullet points for UV Express.
+  static const List<HowItWorksPoint> howItWorks = [
+    HowItWorksPoint(
+      icon: HowItWorksIcon.money,
+      text: 'No separate base fare — flat per-km rate only',
+    ),
+    HowItWorksPoint(
+      icon: HowItWorksIcon.plus,
+      text: 'Rate depends on unit type (Traditional / Modernized)',
+    ),
+    HowItWorksPoint(
+      icon: HowItWorksIcon.discount,
+      text: '20% discount for Students, Seniors & PWDs',
+    ),
+  ];
+
+  /// Important notes shown at the bottom of the UV Express fare screen.
+  static const List<String> importantNotes = [
+    'UV Express fares vary by operator, route, and terminal. '
+        'The flat per-km rate shown is the LTFRB general reference rate — '
+        'actual fares for a given route are often set per-terminal and may '
+        'not scale linearly with distance. A rate increase petition '
+        '(filed March 2026) remains under LTFRB review.',
+  ];
 }

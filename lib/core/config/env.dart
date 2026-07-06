@@ -53,6 +53,9 @@ class Env {
   /// calls. Keep this off the client for anything user-facing.
   static String get cloudinaryApiSecret => _require('CLOUDINARY_API_SECRET');
 
+  /// Anthropic API key for Claude Haiku 4.5 — used for route planning.
+  static String get anthropicApiKey => _require('ANTHROPIC_API_KEY');
+
   /// Reads [key] from the loaded env, throwing a clear error if it is missing
   /// so misconfiguration surfaces immediately instead of failing later.
   static String _require(String key) {

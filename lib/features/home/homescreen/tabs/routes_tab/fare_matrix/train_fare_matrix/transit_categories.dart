@@ -1,10 +1,11 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
-import '../../../../../../core/global_services/cloudinary_services.dart';
-import '../../../../../../core/skeleton_loading/skeleton_loading.dart';
-import '../../../../../../core/theme/app_colors.dart';
-import '../../../../../../core/widgets/card_dropshadow.dart';
+import '../../../../../../../core/global_services/cloudinary_services.dart';
+import '../../../../../../../core/skeleton_loading/skeleton_loading.dart';
+import '../../../../../../../core/theme/app_colors.dart';
+import '../../../../../../../core/widgets/asset_icon.dart';
+import '../../../../../../../core/widgets/card_dropshadow.dart';
 import 'view_table_screen.dart';
 
 /// Available transit line categories.
@@ -84,10 +85,9 @@ class _Chip extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset(
+            AssetIcon(
               'public/assets/icons/train_icon.png',
-              width: 16,
-              height: 16,
+              size: 16,
               color: fg,
             ),
             const SizedBox(width: 6),
