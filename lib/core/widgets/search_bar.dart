@@ -25,6 +25,7 @@ class LocationSearchBar extends StatefulWidget {
     this.onSearchTap,
     this.micActive = false,
     this.disabled = false,
+    this.showMic = true,
   });
 
   final String hintText;
@@ -41,6 +42,10 @@ class LocationSearchBar extends StatefulWidget {
 
   /// When true, the search bar is greyed out and non-interactive.
   final bool disabled;
+
+  /// Whether to show the mic icon. Set to false for contexts where
+  /// speech-to-text is not available (e.g. Finder tab).
+  final bool showMic;
 
   @override
   State<LocationSearchBar> createState() => _LocationSearchBarState();
@@ -166,12 +171,14 @@ class _LocationSearchBarState extends State<LocationSearchBar> {
                 _ActionIcon(icon: Icons.close_rounded, onTap: _clear),
                 const SizedBox(width: 10),
               ],
-              _ActionIcon(
-                icon: widget.micActive ? Icons.mic : Icons.mic_rounded,
-                onTap: widget.onMicTap,
-                color: widget.micActive ? AppColors.error : iconColor,
-              ),
-              const SizedBox(width: 10),
+              if (widget.showMic) ...[
+                _ActionIcon(
+                  icon: widget.micActive ? Icons.mic : Icons.mic_rounded,
+                  onTap: widget.onMicTap,
+                  color: widget.micActive ? AppColors.error : iconColor,
+                ),
+                const SizedBox(width: 10),
+              ],
               _ActionIcon(
                 icon: Icons.search_rounded,
                 color: iconColor,

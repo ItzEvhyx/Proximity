@@ -102,7 +102,13 @@ class _HomeScreenState extends State<HomeScreen> {
       _speechAvailable = await _speech.initialize(
         onStatus: _onSpeechStatus,
         onError: (err) {
-          if (mounted) {
+          // Only show error and stop if it's a fatal error, not a transient
+          // "no match" which just means the user was silent briefly.
+          final errorType = err.errorMsg;
+          final isFatal = errorType == 'error_audio' ||
+              errorType == 'error_permission' ||
+              errorType == 'error_network';
+          if (mounted && isFatal) {
             setState(() {
               _listening = false;
               _pendingAutoSelect = false;
@@ -164,9 +170,9 @@ class _HomeScreenState extends State<HomeScreen> {
       },
       listenOptions: stt.SpeechListenOptions(
         partialResults: true,
-        cancelOnError: true,
-        listenFor: const Duration(seconds: 30),
-        pauseFor: const Duration(seconds: 4),
+        cancelOnError: false,
+        listenFor: const Duration(seconds: 60),
+        pauseFor: const Duration(seconds: 8),
       ),
     );
   }
@@ -198,8 +204,8 @@ class _HomeScreenState extends State<HomeScreen> {
         return;
       }
 
-      // Give up after 2s (10 attempts × 200ms). Dismiss processing state.
-      if (attempts >= 10) {
+      // Give up after 4s (20 attempts × 200ms). Dismiss processing state.
+      if (attempts >= 20) {
         timer.cancel();
         if (mounted) {
           setState(() => _pendingAutoSelect = false);
@@ -438,6 +444,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 onMicTap: _onMicTap,
                                 micActive: _listening,
                                 disabled: isRoutesTab && _routeMode == RouteMode.matrix,
+                                showMic: !(isRoutesTab && _routeMode == RouteMode.finder),
                               ),
                             ),
                           ),

@@ -4,6 +4,9 @@ import '../../../../../core/theme/app_colors.dart';
 import 'past_locations/past_locations.dart';
 import 'past_routes/past_routes_tab.dart';
 
+/// Which sub-tab the history view is showing.
+enum HistoryMode { locations, routes }
+
 /// History tab with "Transit History" header, Past Locations / Past Routes
 /// toggle, and timeline-based content.
 class HistoryTab extends StatefulWidget {
@@ -14,7 +17,7 @@ class HistoryTab extends StatefulWidget {
 }
 
 class _HistoryTabState extends State<HistoryTab> {
-  int _selectedTab = 0; // 0 = Past Locations, 1 = Past Routes
+  HistoryMode _mode = HistoryMode.locations;
 
   @override
   Widget build(BuildContext context) {
@@ -26,16 +29,16 @@ class _HistoryTabState extends State<HistoryTab> {
           _TransitHistoryHeader(),
           const SizedBox(height: 16),
 
-          // ── Tab toggle: Past Locations / Past Routes (centered) ──
+          // ── Tab toggle (same style as Routes tab ModeToggle, centered) ──
           Center(
-            child: _HistoryTabToggle(
-              selectedIndex: _selectedTab,
-              onChanged: (index) => setState(() => _selectedTab = index),
+            child: _HistoryModeToggle(
+              mode: _mode,
+              onChanged: (m) => setState(() => _mode = m),
             ),
           ),
           const SizedBox(height: 8),
 
-          // ── Clear button ──
+          // ── Clear button (same style as Finder tab) ──
           Align(
             alignment: Alignment.centerRight,
             child: Padding(
@@ -45,16 +48,11 @@ class _HistoryTabState extends State<HistoryTab> {
           ),
           const SizedBox(height: 4),
 
-          // ── Timeline content with crossfade animation ──
+          // ── Timeline content (instant switch, no delay) ──
           Expanded(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              switchInCurve: Curves.easeInOut,
-              switchOutCurve: Curves.easeInOut,
-              child: _selectedTab == 0
-                  ? const PastLocationsTab(key: ValueKey(0))
-                  : const PastRoutesTab(key: ValueKey(1)),
-            ),
+            child: _mode == HistoryMode.locations
+                ? const PastLocationsTab()
+                : const PastRoutesTab(),
           ),
         ],
       ),
@@ -101,19 +99,19 @@ class _TransitHistoryHeader extends StatelessWidget {
   }
 }
 
-/// Tab toggle for "Past Locations" / "Past Routes" — same sliding-highlight
-/// style as the Routes tab's [ModeToggle]. Two centered labels with a white
-/// pill that slides to the selected one.
-class _HistoryTabToggle extends StatelessWidget {
-  const _HistoryTabToggle({
-    required this.selectedIndex,
-    required this.onChanged,
-  });
+/// Pill-shaped segmented toggle matching the Routes tab's [ModeToggle]:
+/// light green background with a sliding white pill highlight.
+/// Labels: "Past Locations" / "Past Routes", centered.
+class _HistoryModeToggle extends StatelessWidget {
+  const _HistoryModeToggle({required this.mode, required this.onChanged});
 
-  final int selectedIndex;
-  final ValueChanged<int> onChanged;
+  final HistoryMode mode;
+  final ValueChanged<HistoryMode> onChanged;
 
-  static const List<String> _labels = ['Past Locations', 'Past Routes'];
+  static const List<_ToggleItem> _items = [
+    _ToggleItem('Past Locations', HistoryMode.locations),
+    _ToggleItem('Past Routes', HistoryMode.routes),
+  ];
 
   static const TextStyle _labelStyle = TextStyle(
     fontFamily: 'Poppins',
@@ -122,12 +120,14 @@ class _HistoryTabToggle extends StatelessWidget {
   );
 
   static const double _horizontalPadding = 28;
-  static const double _itemHeight = 34;
+  static const double _itemHeight = 32;
   static const double _barPadding = 4;
   static const double _spacing = 4;
   static const double _radius = 20;
   static const Duration _duration = Duration(milliseconds: 320);
   static const Curve _curve = Curves.easeInOutCubic;
+
+  int get _currentIndex => _items.indexWhere((item) => item.mode == mode);
 
   double _measureTextWidth(String text) {
     final painter = TextPainter(
@@ -141,8 +141,8 @@ class _HistoryTabToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final itemWidths = [
-      for (final label in _labels)
-        _measureTextWidth(label) + (2 * _horizontalPadding),
+      for (final item in _items)
+        _measureTextWidth(item.label) + (2 * _horizontalPadding),
     ];
 
     double leftFor(int index) {
@@ -155,7 +155,7 @@ class _HistoryTabToggle extends StatelessWidget {
 
     final totalWidth = (2 * _barPadding) +
         itemWidths.fold<double>(0, (sum, w) => sum + w) +
-        ((_labels.length - 1) * _spacing);
+        ((_items.length - 1) * _spacing);
 
     return SizedBox(
       width: totalWidth,
@@ -168,13 +168,13 @@ class _HistoryTabToggle extends StatelessWidget {
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            // Sliding white highlight
+            // Sliding white highlight behind the selected label.
             AnimatedPositioned(
               duration: _duration,
               curve: _curve,
-              left: leftFor(selectedIndex),
+              left: leftFor(_currentIndex),
               top: _barPadding,
-              width: itemWidths[selectedIndex],
+              width: itemWidths[_currentIndex],
               height: _itemHeight,
               child: DecoratedBox(
                 decoration: BoxDecoration(
@@ -190,28 +190,19 @@ class _HistoryTabToggle extends StatelessWidget {
                 ),
               ),
             ),
-            // Labels
-            for (var i = 0; i < _labels.length; i++)
+            // Labels on top of the highlight.
+            for (var i = 0; i < _items.length; i++)
               Positioned(
                 left: leftFor(i),
                 top: _barPadding,
                 width: itemWidths[i],
                 height: _itemHeight,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => onChanged(i),
-                  child: Center(
-                    child: AnimatedDefaultTextStyle(
-                      duration: _duration,
-                      curve: _curve,
-                      style: _labelStyle.copyWith(
-                        color: i == selectedIndex
-                            ? AppColors.textDark
-                            : AppColors.primary,
-                      ),
-                      child: Text(_labels[i]),
-                    ),
-                  ),
+                child: _ToggleCell(
+                  label: _items[i].label,
+                  selected: i == _currentIndex,
+                  duration: _duration,
+                  curve: _curve,
+                  onTap: () => onChanged(_items[i].mode),
                 ),
               ),
           ],
@@ -221,7 +212,48 @@ class _HistoryTabToggle extends StatelessWidget {
   }
 }
 
-/// "Clear" button with trash icon.
+class _ToggleCell extends StatelessWidget {
+  const _ToggleCell({
+    required this.label,
+    required this.selected,
+    required this.duration,
+    required this.curve,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final Duration duration;
+  final Curve curve;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Center(
+        child: AnimatedDefaultTextStyle(
+          duration: duration,
+          curve: curve,
+          style: _HistoryModeToggle._labelStyle.copyWith(
+            color: selected ? AppColors.textDark : AppColors.primary,
+          ),
+          child: Text(label),
+        ),
+      ),
+    );
+  }
+}
+
+class _ToggleItem {
+  const _ToggleItem(this.label, this.mode);
+
+  final String label;
+  final HistoryMode mode;
+}
+
+/// "Clear" button matching the Finder tab style: light green bg, red icon + text.
 class _ClearButton extends StatelessWidget {
   const _ClearButton({required this.onTap});
 
@@ -232,23 +264,27 @@ class _ClearButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
         decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.10),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.primary, width: 1.5),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.delete_outline_rounded, color: AppColors.primary, size: 18),
+            Icon(
+              Icons.delete_rounded,
+              size: 14,
+              color: AppColors.error,
+            ),
             const SizedBox(width: 4),
-            Text(
+            const Text(
               'Clear',
               style: TextStyle(
                 fontFamily: 'Poppins',
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: AppColors.primary,
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+                color: AppColors.error,
               ),
             ),
           ],

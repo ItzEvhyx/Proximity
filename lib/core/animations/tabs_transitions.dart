@@ -101,6 +101,13 @@ class _TabsTransitionState extends State<TabsTransition>
 
     final hasBeenBuilt = _builtTabs.contains(index);
 
+    // Kill tabs that are not currently active and not animating out.
+    // Exception: index 0 (Maps) is always kept alive to avoid expensive
+    // map re-initialization.
+    if (!visible && index != 0) {
+      return const SizedBox.shrink();
+    }
+
     double dx = 0;
     if (isCurrent) {
       dx = _direction * (1 - t);
