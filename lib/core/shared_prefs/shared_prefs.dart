@@ -56,4 +56,28 @@ class AppPrefs {
 
   static Future<void> setAlarmMode(String key) =>
       _prefs.setString(_kAlarmMode, key);
+
+  // ── Alert zone distances ───────────────────────────────────────────────────
+  static const String _kAlertZoneDistances = 'alert_zone_distances';
+  static const String _kAlertZoneUnit = 'alert_zone_unit';
+
+  /// List of alert zone distances in meters (up to 3). Defaults to [400].
+  static List<int> get alertZoneDistances {
+    final raw = _prefs.getStringList(_kAlertZoneDistances);
+    if (raw == null || raw.isEmpty) return [400];
+    return raw.map((e) => int.tryParse(e) ?? 400).toList();
+  }
+
+  static Future<void> setAlertZoneDistances(List<int> distances) =>
+      _prefs.setStringList(
+        _kAlertZoneDistances,
+        distances.map((d) => d.toString()).toList(),
+      );
+
+  /// Unit for alert zone: 'meters' or 'km'. Defaults to 'meters'.
+  static String get alertZoneUnit =>
+      _prefs.getString(_kAlertZoneUnit) ?? 'meters';
+
+  static Future<void> setAlertZoneUnit(String unit) =>
+      _prefs.setString(_kAlertZoneUnit, unit);
 }

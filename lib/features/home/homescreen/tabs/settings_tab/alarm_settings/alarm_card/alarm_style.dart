@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../../../../../core/shared_prefs/shared_prefs.dart';
-import '../../../../../../core/supabase/supabase_client.dart';
-import '../../../../../../core/theme/app_colors.dart';
+import '../../../../../../../core/shared_prefs/shared_prefs.dart';
+import '../../../../../../../core/supabase/supabase_client.dart';
+import '../../../../../../../core/theme/app_colors.dart';
 
 /// Data model for an alarm mode option.
 class _AlarmModeOption {
@@ -139,9 +139,9 @@ class _AlarmScreenState extends State<AlarmScreen> {
             // ── Alarm mode cards ─────────────────────────────────────────
             Expanded(
               child: ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 40),
+                padding: const EdgeInsets.fromLTRB(40, 0, 40, 40),
                 itemCount: _alarmModes.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 16),
+                separatorBuilder: (_, __) => const SizedBox(height: 28),
                 itemBuilder: (_, index) {
                   final mode = _alarmModes[index];
                   final isSelected = mode.key == _selectedKey;

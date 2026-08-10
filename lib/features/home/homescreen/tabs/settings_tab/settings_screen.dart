@@ -6,8 +6,9 @@ import '../../../../../core/animations/screen_transitions.dart';
 import '../../../../../core/shared_prefs/shared_prefs.dart';
 import '../../../../../core/supabase/supabase_client.dart';
 import '../../../../../core/theme/app_colors.dart';
-import 'alarm_card/alarm_sound_card.dart';
-import 'alarm_mode/alarm_screen.dart';
+import 'alarm_settings/alarm_card/alarm_sound_card.dart';
+import 'alarm_settings/alarm_card/alarm_style.dart';
+import 'alarm_settings/alarm_card/alert_zone_card.dart';
 import 'profile_avatar_service.dart';
 
 /// Settings screen replicating the green-accented card-based design.
@@ -135,7 +136,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _ChevronRow(
                   icon: Icons.my_location_rounded,
                   label: 'Alert zone distances',
-                  sub: '400m · 200m · 50m',
+                  sub: _alertZoneLabel(),
+                  onTap: () async {
+                    await showAlertZonePicker(context);
+                    if (mounted) setState(() {});
+                  },
                 ),
                 _ChevronRow(
                   icon: Icons.swipe_right_rounded,
@@ -253,6 +258,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'fullscreen': 'Fullscreen',
     };
     return labels[key] ?? 'Push Notification';
+  }
+
+  /// Builds the subtitle for alert zone distances (e.g. '400m · 200m · 50m').
+  String _alertZoneLabel() {
+    final distances = AppPrefs.alertZoneDistances;
+    final unit = AppPrefs.alertZoneUnit;
+    return distances.map((d) {
+      if (unit == 'km') {
+        final km = d / 1000;
+        return km == km.toInt() ? '${km.toInt()}km' : '${km.toStringAsFixed(1)}km';
+      }
+      return '${d}m';
+    }).join(' · ');
   }
 }
 
