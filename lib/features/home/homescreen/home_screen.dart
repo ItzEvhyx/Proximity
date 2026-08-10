@@ -13,7 +13,7 @@ import 'tabs/maps_tab/maps_controller.dart';
 import 'tabs/maps_tab/maps_tab.dart';
 import 'tabs/maps_tab/place_result.dart';
 import 'tabs/maps_tab/search_results_dropdown.dart';
-import 'tabs/profile_tab/profile_tab.dart';
+import 'tabs/settings_tab/profile_tab.dart';
 import 'tabs/routes_tab/routes_tab.dart';
 import 'tabs/routes_tab/way_finder/search_guide.dart';
 import 'tabs/routes_tab/way_finder/way_finder_tab.dart';
@@ -425,54 +425,57 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: AnimatedOpacity(
                   opacity: _mapReady ? 1 : 0,
                   duration: _revealDuration,
-                  child: AnimatedBuilder(
-                    animation: _mapsController,
-                    builder: (context, _) {
-                      return Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          GestureDetector(
-                            // On Finder tab, intercept tap to open search guide.
-                            onTap: (isRoutesTab && _routeMode == RouteMode.finder)
-                                ? _openFinderSearchGuide
-                                : null,
-                            child: AbsorbPointer(
-                              absorbing: isRoutesTab && _routeMode == RouteMode.finder,
-                              child: LocationSearchBar(
-                                controller: _mapsController.searchText,
-                                focusNode: _mapsController.searchFocus,
-                                onMicTap: _onMicTap,
-                                micActive: _listening,
-                                disabled: isRoutesTab && _routeMode == RouteMode.matrix,
-                                showMic: !(isRoutesTab && _routeMode == RouteMode.finder),
-                              ),
-                            ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      GestureDetector(
+                        // On Finder tab, intercept tap to open search guide.
+                        onTap: (isRoutesTab && _routeMode == RouteMode.finder)
+                            ? _openFinderSearchGuide
+                            : null,
+                        child: AbsorbPointer(
+                          absorbing: isRoutesTab && _routeMode == RouteMode.finder,
+                          child: LocationSearchBar(
+                            controller: _mapsController.searchText,
+                            focusNode: _mapsController.searchFocus,
+                            onMicTap: _onMicTap,
+                            micActive: _listening,
+                            disabled: isRoutesTab && _routeMode == RouteMode.matrix,
+                            showMic: !(isRoutesTab && _routeMode == RouteMode.finder),
                           ),
-                          // Matrix/Finder toggle sits directly below the
-                          // search bar, Routes tab only.
-                          if (isRoutesTab) ...[
-                            const SizedBox(height: 12),
-                            Align(
-                              alignment: Alignment.center,
-                              child: ModeToggle(
-                                mode: _routeMode,
-                                onChanged: (mode) =>
-                                    setState(() => _routeMode = mode),
-                              ),
-                            ),
-                          ],
-                          // Voice transcription + search results / nearby
-                          // places are exclusive to the Maps tab.
-                          if (isMapsTab && (_listening || _pendingAutoSelect || _speechError != null))
-                            _TranscriptionCard(
-                              transcript: _transcript,
-                              listening: _listening,
-                              processing: _pendingAutoSelect,
-                              error: _speechError,
-                              onStop: _stopListening,
-                            )
-                          else if (isMapsTab && _mapsController.resultsVisible)
-                            SearchResultsDropdown(
+                        ),
+                      ),
+                      // Matrix/Finder toggle sits directly below the
+                      // search bar, Routes tab only.
+                      if (isRoutesTab) ...[
+                        const SizedBox(height: 12),
+                        Align(
+                          alignment: Alignment.center,
+                          child: ModeToggle(
+                            mode: _routeMode,
+                            onChanged: (mode) =>
+                                setState(() => _routeMode = mode),
+                          ),
+                        ),
+                      ],
+                      // Voice transcription + search results / nearby
+                      // places are exclusive to the Maps tab.
+                      if (isMapsTab && (_listening || _pendingAutoSelect || _speechError != null))
+                        _TranscriptionCard(
+                          transcript: _transcript,
+                          listening: _listening,
+                          processing: _pendingAutoSelect,
+                          error: _speechError,
+                          onStop: _stopListening,
+                        )
+                      else if (isMapsTab)
+                        AnimatedBuilder(
+                          animation: _mapsController,
+                          builder: (context, _) {
+                            if (!_mapsController.resultsVisible) {
+                              return const SizedBox.shrink();
+                            }
+                            return SearchResultsDropdown(
                               results: _mapsController.results,
                               loading: _mapsController.loading,
                               showingNearby: _mapsController.showingNearby,
@@ -483,10 +486,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                   _mapsController.resultsCollapsed
                                       ? _mapsController.expandResults()
                                       : _mapsController.collapseResults(),
-                            ),
-                        ],
-                      );
-                    },
+                            );
+                          },
+                        ),
+                    ],
                   ),
                 ),
               ),
@@ -527,7 +530,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       setState(() => _skeletonVisible = false);
                     }
                   },
-                  child: _HomeSkeleton(topOffset: topOffset),
+                  child: ShimmerProvider(
+                    child: _HomeSkeleton(topOffset: topOffset),
+                  ),
                 ),
               ),
             ),

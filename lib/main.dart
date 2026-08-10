@@ -10,6 +10,7 @@ import 'core/router/app_router.dart';
 import 'core/session/user_session.dart';
 import 'core/shared_prefs/shared_prefs.dart';
 import 'core/supabase/supabase_client.dart';
+import 'core/theme/app_colors.dart';
 import 'features/login/login_screen.dart';
 import 'features/network_error/network_error_screen.dart';
 import 'features/splashscreen/splashscreen.dart';
@@ -17,45 +18,68 @@ import 'features/splashscreen/splashscreen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Load secrets from .env.local, then connect to Supabase before the app
-  // runs so the client is ready for any query later on.
+  // Only load the lightweight env file before runApp — everything else
+  // initializes inside the widget tree so the OS sees a first frame quickly
+  // and doesn't kill the process for being unresponsive.
   await Env.load();
 
-  // Prepare Cloudinary URL delivery (reads the cloud name from Env) so
-  // network-hosted images can be built anywhere in the app.
-  CloudinaryService.instance.init();
-
-  // Hand the Mapbox Maps SDK its public token so map tiles can load.
-  MapboxOptions.setAccessToken(Env.mapboxPublicToken);
-
-  await initSupabase();
-
-  // Local storage for offline-first routing (logged-in state + onboarding),
-  // then reconcile with any Supabase session restored from a previous run.
-  await AppPrefs.init();
-  await UserSession.instance.restore();
-
-  // Pre-load the splash video BEFORE the first frame is drawn. While this
-  // awaits, no Flutter frame is rendered, so the native splash stays on screen.
-  // Once ready, the first frame shows the video already playing, so there is
-  // no green gap/delay between the native splash and the video.
-  final splashController = VideoPlayerController.asset(
-    'public/assets/splash/splashscreen.mp4',
-  );
-  await splashController.initialize();
-  await splashController.setVolume(1.0);
-
-  // Warm up the bus Lottie in the background while the splash video plays, so
-  // it is already decoded when we transition into the login screen (no jank).
-  BusAnimation.preload();
-
-  runApp(MyApp(splashController: splashController));
+  runApp(const ProximityApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key, required this.splashController});
+/// Root widget that performs async initialization while showing a plain
+/// colored screen (matching the native splash). Once ready it hands off to the
+/// splash video screen.
+class ProximityApp extends StatefulWidget {
+  const ProximityApp({super.key});
 
-  final VideoPlayerController splashController;
+  @override
+  State<ProximityApp> createState() => _ProximityAppState();
+}
+
+class _ProximityAppState extends State<ProximityApp> {
+  late final Future<VideoPlayerController> _initFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _initFuture = _bootstrap();
+  }
+
+  /// Runs all heavy initialization that used to live in main(). Because the
+  /// widget tree is already mounted, Flutter has rendered a first frame and
+  /// the OS won't consider the app stuck.
+  Future<VideoPlayerController> _bootstrap() async {
+    // Cloudinary URL helper (sync, cheap).
+    CloudinaryService.instance.init();
+
+    // Mapbox access token — skip gracefully if not configured.
+    final mapboxToken = Env.mapboxPublicTokenOrNull;
+    if (mapboxToken != null) {
+      MapboxOptions.setAccessToken(mapboxToken);
+    }
+
+    // Supabase, SharedPreferences, and session restore can run in parallel
+    // with the video load for faster startup.
+    final splashController = VideoPlayerController.asset(
+      'public/assets/splash/splashscreen.mp4',
+    );
+
+    await Future.wait([
+      initSupabase(),
+      AppPrefs.init(),
+      splashController.initialize(),
+    ]);
+
+    // Restore user session (depends on both Supabase + AppPrefs being ready).
+    await UserSession.instance.restore();
+
+    await splashController.setVolume(1.0);
+
+    // Warm up the bus Lottie in the background while the splash video plays.
+    BusAnimation.preload();
+
+    return splashController;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -63,17 +87,27 @@ class MyApp extends StatelessWidget {
       title: 'Proximity',
       debugShowCheckedModeBanner: false,
       navigatorKey: navigatorKey,
-      home: SplashScreen(
-        controller: splashController,
-        // Once the splash video finishes, check connectivity first: no
-        // internet -> network error screen; otherwise route by local state
-        // (logged in -> home, else -> login).
-        onFinished: () async {
-          final online = await NetworkService.instance.hasConnection();
-          navigatorKey.currentState?.pushReplacement(
-            ScreenTransitions.fade(
-              online ? AppRouter.afterSplash() : const NetworkErrorScreen(),
-            ),
+      home: FutureBuilder<VideoPlayerController>(
+        future: _initFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done ||
+              snapshot.hasError) {
+            // While initializing, show a plain screen matching the native
+            // splash color so the transition is seamless.
+            return const Scaffold(backgroundColor: AppColors.primary);
+          }
+
+          final controller = snapshot.data!;
+          return SplashScreen(
+            controller: controller,
+            onFinished: () async {
+              final online = await NetworkService.instance.hasConnection();
+              navigatorKey.currentState?.pushReplacement(
+                ScreenTransitions.fade(
+                  online ? AppRouter.afterSplash() : const NetworkErrorScreen(),
+                ),
+              );
+            },
           );
         },
       ),

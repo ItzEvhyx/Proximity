@@ -105,7 +105,12 @@ class _TabsTransitionState extends State<TabsTransition>
     // Exception: index 0 (Maps) is always kept alive to avoid expensive
     // map re-initialization.
     if (!visible && index != 0) {
-      return const SizedBox.shrink();
+      return Offstage(
+        offstage: true,
+        child: hasBeenBuilt
+            ? widget.children[index]
+            : const SizedBox.shrink(),
+      );
     }
 
     double dx = 0;
@@ -122,7 +127,7 @@ class _TabsTransitionState extends State<TabsTransition>
         child: FractionalTranslation(
           translation: Offset(dx, 0),
           child: hasBeenBuilt
-              ? widget.children[index]
+              ? RepaintBoundary(child: widget.children[index])
               : const SizedBox.shrink(),
         ),
       ),

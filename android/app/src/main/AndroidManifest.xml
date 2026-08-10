@@ -7,6 +7,10 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <!-- Microphone: voice search (speech-to-text). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <!-- Photo library: profile picture picker (Android 13+ uses granular media permissions). -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32"/>
     <application
         android:label="Proximity"
         android:name="${applicationName}"

@@ -402,6 +402,10 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
     _radarController?.stop();
   }
 
+  /// Frame counter used to throttle radar updates (update every 3rd frame
+  /// instead of every frame — native annotation updates are expensive).
+  int _radarFrameCount = 0;
+
   Future<void> _tickRadar() async {
     final manager = _radarManager;
     final controller = _radarController;
@@ -413,6 +417,11 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
         _dragging) {
       return;
     }
+
+    // Skip 2 out of every 3 frames to reduce native annotation churn.
+    _radarFrameCount++;
+    if (_radarFrameCount % 3 != 0) return;
+
     _radarUpdating = true;
     final base = controller.value;
     for (var i = 0; i < _radarRings.length; i++) {

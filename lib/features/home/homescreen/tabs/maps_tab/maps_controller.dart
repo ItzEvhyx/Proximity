@@ -131,7 +131,7 @@ class MapsController extends ChangeNotifier {
   /// [_locationPollInterval] it re-reads the user's position and, if it has
   /// moved, refreshes distances / nearby landmarks and the current-location
   /// pin.
-  static const Duration _locationPollInterval = Duration(seconds: 3);
+  static const Duration _locationPollInterval = Duration(seconds: 5);
   static const double _movedThresholdMeters = 12;
   Timer? _locationTimer;
 
@@ -220,6 +220,7 @@ class MapsController extends ChangeNotifier {
     _userLat = pos.latitude;
 
     // Recompute distances on whatever results are currently displayed.
+    // Only notify if the results list is actually visible to the user.
     if (_results.isNotEmpty) {
       _results = _withDistances(_results);
     }
@@ -230,11 +231,14 @@ class MapsController extends ChangeNotifier {
     }
 
     // If the empty-field "nearby" list is showing, refresh it for the new spot.
+    // Otherwise skip the notification — distances updated silently until the
+    // user opens the dropdown again.
     if (_resultsVisible && _showingNearby) {
       unawaited(_loadNearby());
-    } else {
+    } else if (_resultsVisible) {
       notifyListeners();
     }
+    // No notifyListeners when results are hidden — avoids unnecessary rebuilds.
   }
 
   Future<void> _refreshCurrentLocationPin(double lng, double lat) async {

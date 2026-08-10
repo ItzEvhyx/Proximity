@@ -122,7 +122,6 @@ class ClaudeService {
     final steps = (legs[0]['steps'] as List);
 
     // Convert Mapbox steps into our RouteStep format.
-    // Group small steps together to keep it to 3-5 meaningful nodes.
     final routeSteps = _convertMapboxSteps(steps);
 
     return RouteResult(
@@ -132,76 +131,32 @@ class ClaudeService {
     );
   }
 
-  /// Converts Mapbox direction steps into 3-5 grouped route nodes.
+  /// Converts all meaningful Mapbox direction steps into route nodes.
+  /// Returns every step from the API so the user gets complete turn-by-turn
+  /// instructions regardless of route length.
   List<RouteStep> _convertMapboxSteps(List<dynamic> steps) {
-    // Filter out very short steps (< 50m arrive steps)
-    final meaningful = steps.where((s) {
-      final dist = (s['distance'] as num).toDouble();
-      final maneuver = s['maneuver'] as Map<String, dynamic>;
-      final type = maneuver['type'] as String? ?? '';
-      return dist > 50 || type == 'arrive';
-    }).toList();
+    if (steps.isEmpty) return [];
 
-    if (meaningful.isEmpty) return [];
-
-    // If too many steps, group them into ~4 chunks
     final List<RouteStep> result = [];
 
-    if (meaningful.length <= 5) {
-      // Use each step directly
-      for (var i = 0; i < meaningful.length; i++) {
-        final s = meaningful[i] as Map<String, dynamic>;
-        final isLast = i == meaningful.length - 1;
-        result.add(_mapboxStepToRouteStep(s, isLast));
-      }
-    } else {
-      // Group into 4 segments
-      final chunkSize = (meaningful.length / 4).ceil();
-      for (var i = 0; i < meaningful.length; i += chunkSize) {
-        final chunk = meaningful.sublist(
-            i, (i + chunkSize).clamp(0, meaningful.length));
-        final isLast = i + chunkSize >= meaningful.length;
+    for (var i = 0; i < steps.length; i++) {
+      final s = steps[i] as Map<String, dynamic>;
+      final maneuver = s['maneuver'] as Map<String, dynamic>;
+      final type = maneuver['type'] as String? ?? '';
+      final distance = (s['distance'] as num).toDouble();
 
-        // Sum up distance and duration for the chunk
-        double totalDist = 0;
-        double totalDur = 0;
-        final descriptions = <String>[];
-        String firstInstruction = '';
+      // Skip very short intermediate steps (< 20m) that aren't the final
+      // arrive step — they clutter the list without adding useful info.
+      if (distance < 20 && type != 'arrive' && i != 0) continue;
 
-        for (var j = 0; j < chunk.length; j++) {
-          final s = chunk[j] as Map<String, dynamic>;
-          totalDist += (s['distance'] as num).toDouble();
-          totalDur += (s['duration'] as num).toDouble();
-          final maneuver = s['maneuver'] as Map<String, dynamic>;
-          final instruction = maneuver['instruction'] as String? ?? '';
-          if (j == 0) firstInstruction = instruction;
-          if (instruction.isNotEmpty && j > 0) {
-            descriptions.add(instruction);
-          }
-        }
+      final isLast = i == steps.length - 1 || type == 'arrive';
+      result.add(_mapboxStepToRouteStep(s, isLast));
 
-        final firstStep = chunk[0] as Map<String, dynamic>;
-        final lastStep = chunk.last as Map<String, dynamic>;
-        final firstName = (firstStep['name'] as String?) ?? '';
-        final lastName = (lastStep['name'] as String?) ?? '';
-
-        final title = firstName.isNotEmpty && lastName.isNotEmpty
-            ? '$firstName→$lastName'
-            : firstInstruction;
-
-        result.add(RouteStep(
-          title: title.isNotEmpty ? title : 'Continue',
-          eta: _formatDuration(totalDur),
-          distance: _formatDistance(totalDist),
-          description: descriptions.isNotEmpty
-              ? descriptions.take(2).join('. ')
-              : firstInstruction,
-          isDestination: isLast,
-        ));
-      }
+      // Stop after the arrive step if we encounter it mid-list.
+      if (type == 'arrive') break;
     }
 
-    // Ensure last step is marked as destination
+    // Ensure last step is marked as destination.
     if (result.isNotEmpty && !result.last.isDestination) {
       final last = result.removeLast();
       result.add(RouteStep(

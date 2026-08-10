@@ -37,6 +37,13 @@ class Env {
   /// at start-up so it can load map tiles.
   static String get mapboxPublicToken => _require('MAPBOX_PUBLIC_TOKEN');
 
+  /// Non-throwing variant — returns null when the key is missing or empty,
+  /// so callers can skip Mapbox initialisation gracefully during development.
+  static String? get mapboxPublicTokenOrNull {
+    final value = dotenv.env['MAPBOX_PUBLIC_TOKEN'];
+    return (value != null && value.isNotEmpty) ? value : null;
+  }
+
   /// Cloudinary cloud name — the only value needed to build public image
   /// delivery URLs (`https://res.cloudinary.com/<cloudName>/...`).
   static String get cloudinaryCloudName => _require('CLOUDINARY_CLOUD_NAME');

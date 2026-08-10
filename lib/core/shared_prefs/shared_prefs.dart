@@ -38,4 +38,22 @@ class AppPrefs {
       _prefs.setString(_kUserId, id);
 
   static Future<void> clearLoggedInUserId() => _prefs.remove(_kUserId);
+
+  // ── Alarm sound ────────────────────────────────────────────────────────────
+  static const String _kAlarmSound = 'selected_alarm_sound';
+
+  /// The asset key of the selected alarm sound (e.g. 'default_alarm').
+  static String get alarmSound => _prefs.getString(_kAlarmSound) ?? 'default_alarm';
+
+  static Future<void> setAlarmSound(String key) =>
+      _prefs.setString(_kAlarmSound, key);
+
+  // ── Alarm mode ─────────────────────────────────────────────────────────────
+  static const String _kAlarmMode = 'selected_alarm_mode';
+
+  /// The key of the selected alarm mode (e.g. 'push_notification', 'fullscreen').
+  static String get alarmMode => _prefs.getString(_kAlarmMode) ?? 'push_notification';
+
+  static Future<void> setAlarmMode(String key) =>
+      _prefs.setString(_kAlarmMode, key);
 }

@@ -25,7 +25,7 @@ class NavBar extends StatelessWidget {
     _NavItem('Maps', 'public/assets/icons/maps_icon.png'),
     _NavItem('Routes', 'public/assets/icons/routes_icon.png'),
     _NavItem('History', 'public/assets/icons/history_icon.png'),
-    _NavItem('Profile', 'public/assets/icons/profile_icon.png'),
+    _NavItem('Settings', 'public/assets/icons/settings_icon.png'),
   ];
 
   static const double _barHeight = 60;

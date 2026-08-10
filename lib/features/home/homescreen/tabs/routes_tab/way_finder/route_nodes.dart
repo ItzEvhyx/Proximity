@@ -146,22 +146,22 @@ class _DashedSegment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 8 dashes with gaps to fill ~88px of vertical space between nodes.
+    // 5 dashes with gaps — compact connector between the many route steps.
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 3),
       child: Column(
-        children: List.generate(8, (i) {
+        children: List.generate(5, (i) {
           return Column(
             children: [
               Container(
                 width: 2.5,
-                height: 6,
+                height: 5,
                 decoration: BoxDecoration(
                   color: AppColors.primary,
                   borderRadius: BorderRadius.circular(1),
                 ),
               ),
-              if (i < 7) const SizedBox(height: 5),
+              if (i < 4) const SizedBox(height: 4),
             ],
           );
         }),
