@@ -35,6 +35,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String? _avatarUrl;
   bool _uploading = false;
 
+  /// When false, the screen body is replaced by an empty container so the
+  /// navigation transition doesn't need to composite the full widget tree.
+  bool _contentVisible = true;
+
   @override
   void initState() {
     super.initState();
@@ -63,6 +67,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  /// Pushes a route while hiding this screen's content to keep the transition
+  /// smooth (GPU only composites a blank scaffold during the slide).
+  Future<T?> _pushRoute<T>(Route<T> route) async {
+    setState(() => _contentVisible = false);
+    // Wait one frame so the empty scaffold is actually rendered before the
+    // navigator starts the push transition.
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return null;
+    final result = await Navigator.of(context).push(route);
+    if (mounted) setState(() => _contentVisible = true);
+    return result;
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = supabase.auth.currentUser;
@@ -80,7 +97,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       backgroundColor: SettingsScreen._bg,
       body: SafeArea(
-        child: ListView(
+        child: _contentVisible
+            ? RepaintBoundary(
+                child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
           children: [
             const SizedBox(height: 14),
@@ -127,7 +146,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   label: 'Alarm mode',
                   sub: _alarmModeLabel(AppPrefs.alarmMode),
                   onTap: () async {
-                    await Navigator.of(context).push(
+                    await _pushRoute(
                       ScreenTransitions.fadeRightToLeft(const AlarmScreen()),
                     );
                     if (mounted) setState(() {});
@@ -218,6 +237,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 40),
           ],
         ),
+              )
+            : const SizedBox.shrink(),
       ),
     );
   }

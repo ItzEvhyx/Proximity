@@ -29,7 +29,7 @@ class ScreenTransitions {
   /// right edge toward the left (right-to-left motion).
   static Route<T> fadeRightToLeft<T>(
     Widget page, {
-    Duration duration = const Duration(milliseconds: 550),
+    Duration duration = const Duration(milliseconds: 350),
     RouteSettings? settings,
   }) {
     return PageRouteBuilder<T>(

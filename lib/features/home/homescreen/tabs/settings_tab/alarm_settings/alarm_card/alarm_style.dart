@@ -53,10 +53,44 @@ class AlarmScreen extends StatefulWidget {
 class _AlarmScreenState extends State<AlarmScreen> {
   late String _selectedKey;
 
+  /// Starts false — the screen renders empty (just the top bar) on the first
+  /// frame so the route transition is buttery smooth. Content fades in once
+  /// the screen is fully built and the transition is done.
+  bool _showContent = false;
+
   @override
   void initState() {
     super.initState();
     _selectedKey = AppPrefs.alarmMode;
+
+    // Schedule content reveal after the route transition finishes.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final route = ModalRoute.of(context);
+      final animation = route?.animation;
+
+      if (animation == null || animation.isCompleted) {
+        // No animation or already done (unlikely but safe).
+        _revealContent();
+      } else {
+        animation.addStatusListener(_onRouteAnimationStatus);
+      }
+    });
+  }
+
+  void _onRouteAnimationStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed) {
+      ModalRoute.of(context)?.animation?.removeStatusListener(_onRouteAnimationStatus);
+      _revealContent();
+    }
+  }
+
+  /// Shows the content after a single extra frame so the compositor isn't
+  /// overwhelmed decoding images on the same frame the transition lands.
+  void _revealContent() {
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _showContent = true);
+    });
   }
 
   void _onTap(String key) {
@@ -138,19 +172,27 @@ class _AlarmScreenState extends State<AlarmScreen> {
             const SizedBox(height: 24),
             // ── Alarm mode cards ─────────────────────────────────────────
             Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(40, 0, 40, 40),
-                itemCount: _alarmModes.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 28),
-                itemBuilder: (_, index) {
-                  final mode = _alarmModes[index];
-                  final isSelected = mode.key == _selectedKey;
-                  return _AlarmModeCard(
-                    mode: mode,
-                    isSelected: isSelected,
-                    onTap: () => _onTap(mode.key),
-                  );
-                },
+              child: AnimatedOpacity(
+                opacity: _showContent ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOut,
+                child: _showContent
+                    ? ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(40, 0, 40, 40),
+                        itemCount: _alarmModes.length,
+                        separatorBuilder: (_, __) =>
+                            const SizedBox(height: 28),
+                        itemBuilder: (_, index) {
+                          final mode = _alarmModes[index];
+                          final isSelected = mode.key == _selectedKey;
+                          return _AlarmModeCard(
+                            mode: mode,
+                            isSelected: isSelected,
+                            onTap: () => _onTap(mode.key),
+                          );
+                        },
+                      )
+                    : const SizedBox.shrink(),
               ),
             ),
           ],
@@ -263,6 +305,11 @@ class _AlarmModeCard extends StatelessWidget {
                   mode.asset,
                   width: double.infinity,
                   fit: BoxFit.cover,
+                  gaplessPlayback: true,
+                  frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                    if (wasSynchronouslyLoaded || frame != null) return child;
+                    return const SizedBox(height: 200);
+                  },
                 ),
               )
             else
@@ -274,6 +321,14 @@ class _AlarmModeCard extends StatelessWidget {
                     child: Image.asset(
                       mode.asset,
                       fit: BoxFit.contain,
+                      gaplessPlayback: true,
+                      frameBuilder:
+                          (context, child, frame, wasSynchronouslyLoaded) {
+                        if (wasSynchronouslyLoaded || frame != null) {
+                          return child;
+                        }
+                        return const SizedBox(height: 200);
+                      },
                     ),
                   ),
                 ),
