@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart' as geo;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../../../core/global_services/foreground_service.dart';
+import '../../../../../core/database/app_database.dart';
+import '../../../../../core/overlay/overlay_service.dart';
 import '../../../../../core/shared_prefs/shared_prefs.dart';
 import 'maps_search_service.dart';
 import 'pinned_trip.dart';
@@ -619,6 +622,15 @@ class MapsController extends ChangeNotifier {
     _firedAlertPhases.clear();
     _updateDistanceAndEta();
 
+    // Start foreground service so the app survives in the background.
+    ProximityForegroundService.instance.start(
+      title: 'Proximity alarm active',
+      text: 'Tracking distance to ${frozen.name}',
+    );
+
+    // Show the floating overlay immediately so it's ready before backgrounding.
+    OverlayService.instance.show();
+
     notifyListeners();
 
     // Re-draw the pin at the confirmed coordinate, locked (no camera move).
@@ -724,6 +736,26 @@ class MapsController extends ChangeNotifier {
 
   Future<void> _loadHistory() async {
     try {
+      // Try loading from SQLite first (preferred).
+      final db = AppDatabase.instance;
+      final rows = await db.getRecentTrips(limit: _maxHistory);
+      if (rows.isNotEmpty) {
+        _history = rows.map((row) => PinnedTrip(
+          name: row['name'] as String,
+          address: row['address'] as String?,
+          longitude: (row['longitude'] as num).toDouble(),
+          latitude: (row['latitude'] as num).toDouble(),
+          distanceMeters: (row['distance_meters'] as num?)?.toDouble(),
+          startLocationName: row['start_location_name'] as String?,
+          startLongitude: (row['start_longitude'] as num?)?.toDouble(),
+          startLatitude: (row['start_latitude'] as num?)?.toDouble(),
+          pinnedAt: DateTime.parse(row['pinned_at'] as String),
+        )).toList();
+        notifyListeners();
+        return;
+      }
+
+      // Fallback to SharedPreferences (pre-migration or empty SQLite).
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getString(_historyPrefsKey);
       if (raw == null) return;
@@ -740,8 +772,24 @@ class MapsController extends ChangeNotifier {
 
   Future<void> _saveHistory() async {
     try {
+      // Write to both SharedPreferences (backward compat) and SQLite.
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_historyPrefsKey, PinnedTrip.encodeList(_history));
+
+      // Write to SQLite.
+      final db = AppDatabase.instance;
+      final rows = _history.map((t) => {
+        'name': t.name,
+        'address': t.address,
+        'longitude': t.longitude,
+        'latitude': t.latitude,
+        'distance_meters': t.distanceMeters,
+        'start_location_name': t.startLocationName,
+        'start_longitude': t.startLongitude,
+        'start_latitude': t.startLatitude,
+        'pinned_at': t.pinnedAt.toIso8601String(),
+      }).toList();
+      await db.replaceAllTrips(rows);
     } catch (_) {
       // Best-effort persistence.
     }
@@ -845,6 +893,18 @@ class MapsController extends ChangeNotifier {
     final etaMin = (etaSeconds / 60).round();
     _etaToDestination = etaMin < 60 ? '$etaMin min' : '${etaMin ~/ 60}h ${etaMin % 60}m';
 
+    // Keep the sticky notification in sync with the latest distance.
+    ProximityForegroundService.instance.updateNotification(
+      eta: _etaToDestination,
+      distance: distanceLabel,
+    );
+
+    // Update the floating overlay card (if visible).
+    OverlayService.instance.update(
+      eta: _etaToDestination ?? '--',
+      distance: distanceLabel,
+    );
+
     notifyListeners();
 
     // Check alert zone distances (sorted descending: first = farthest).
@@ -867,6 +927,10 @@ class MapsController extends ChangeNotifier {
     _confirmedLng = null;
     _confirmedLat = null;
     _firedAlertPhases.clear();
+    // Stop foreground service — no longer need background survival.
+    ProximityForegroundService.instance.stop();
+    // Hide the floating overlay.
+    OverlayService.instance.hide();
     notifyListeners();
   }
 

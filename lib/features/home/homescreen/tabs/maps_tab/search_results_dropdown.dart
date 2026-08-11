@@ -14,8 +14,7 @@ class SearchResultsDropdown extends StatelessWidget {
     required this.showingNearby,
     required this.onSelect,
     this.error,
-    this.collapsed = false,
-    this.onToggleCollapse,
+    this.onHide,
   });
 
   final List<PlaceResult> results;
@@ -24,9 +23,8 @@ class SearchResultsDropdown extends StatelessWidget {
   final String? error;
   final ValueChanged<PlaceResult> onSelect;
 
-  /// When true only the header bar shows, with a chevron to reopen the list.
-  final bool collapsed;
-  final VoidCallback? onToggleCollapse;
+  /// Called when the user presses "Hide" — removes the dropdown entirely.
+  final VoidCallback? onHide;
 
   @override
   Widget build(BuildContext context) {
@@ -51,10 +49,9 @@ class SearchResultsDropdown extends StatelessWidget {
         children: [
           _HeaderBar(
             label: showingNearby ? 'Nearby places' : 'Results',
-            collapsed: collapsed,
-            onToggle: onToggleCollapse,
+            onHide: onHide,
           ),
-          if (!collapsed) Flexible(child: _buildBody()),
+          Flexible(child: _buildBody()),
         ],
       ),
     );
@@ -109,58 +106,59 @@ class SearchResultsDropdown extends StatelessWidget {
 }
 
 /// Header bar shown above the results, carrying the section label and a
-/// chevron button that hides (collapses) or reopens the list.
+/// "Hide" button that dismisses the entire dropdown.
 class _HeaderBar extends StatelessWidget {
   const _HeaderBar({
     required this.label,
-    required this.collapsed,
-    this.onToggle,
+    this.onHide,
   });
 
   final String label;
-  final bool collapsed;
-  final VoidCallback? onToggle;
+  final VoidCallback? onHide;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onToggle,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 12, 10, 12),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                label.toUpperCase(),
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  color: AppColors.textGrey,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.6,
-                ),
-              ),
-            ),
-            Icon(
-              collapsed
-                  ? Icons.keyboard_arrow_down_rounded
-                  : Icons.keyboard_arrow_up_rounded,
-              color: AppColors.primary,
-              size: 24,
-            ),
-            const SizedBox(width: 4),
-            Text(
-              collapsed ? 'Show' : 'Hide',
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 12, 10, 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label.toUpperCase(),
               style: const TextStyle(
                 fontFamily: 'Inter',
-                color: AppColors.primary,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
+                color: AppColors.textGrey,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.6,
               ),
             ),
-            const SizedBox(width: 6),
-          ],
-        ),
+          ),
+          GestureDetector(
+            onTap: onHide,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.keyboard_arrow_up_rounded,
+                  color: AppColors.primary,
+                  size: 24,
+                ),
+                const SizedBox(width: 4),
+                const Text(
+                  'Hide',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    color: AppColors.primary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(width: 6),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

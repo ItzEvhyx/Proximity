@@ -1,5 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../database/app_database.dart';
+
 /// Local, offline-first key/value storage backed by SharedPreferences.
 ///
 /// Holds the small amount of state the app needs to decide where to route the
@@ -19,6 +21,16 @@ class AppPrefs {
 
   static Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
+  }
+
+  /// Mirrors the current settings into SQLite for durable local storage.
+  /// Call after any setting change for consistency.
+  static Future<void> _syncToSqlite(String key, String value) async {
+    try {
+      await AppDatabase.instance.setSetting(key, value);
+    } catch (_) {
+      // SQLite not yet initialized or unavailable — non-fatal.
+    }
   }
 
   // ── Onboarding ─────────────────────────────────────────────────────────────
@@ -45,8 +57,10 @@ class AppPrefs {
   /// The asset key of the selected alarm sound (e.g. 'default_alarm').
   static String get alarmSound => _prefs.getString(_kAlarmSound) ?? 'default_alarm';
 
-  static Future<void> setAlarmSound(String key) =>
-      _prefs.setString(_kAlarmSound, key);
+  static Future<void> setAlarmSound(String key) async {
+    await _prefs.setString(_kAlarmSound, key);
+    _syncToSqlite('alarm_sound', key);
+  }
 
   // ── Alert zone distances ───────────────────────────────────────────────────
   static const String _kAlertZoneDistances = 'alert_zone_distances';
@@ -59,18 +73,22 @@ class AppPrefs {
     return raw.map((e) => int.tryParse(e) ?? 400).toList();
   }
 
-  static Future<void> setAlertZoneDistances(List<int> distances) =>
-      _prefs.setStringList(
-        _kAlertZoneDistances,
-        distances.map((d) => d.toString()).toList(),
-      );
+  static Future<void> setAlertZoneDistances(List<int> distances) async {
+    await _prefs.setStringList(
+      _kAlertZoneDistances,
+      distances.map((d) => d.toString()).toList(),
+    );
+    _syncToSqlite('alert_zone_distances', distances.join(','));
+  }
 
   /// Unit for alert zone: 'meters' or 'km'. Defaults to 'meters'.
   static String get alertZoneUnit =>
       _prefs.getString(_kAlertZoneUnit) ?? 'meters';
 
-  static Future<void> setAlertZoneUnit(String unit) =>
-      _prefs.setString(_kAlertZoneUnit, unit);
+  static Future<void> setAlertZoneUnit(String unit) async {
+    await _prefs.setString(_kAlertZoneUnit, unit);
+    _syncToSqlite('alert_zone_unit', unit);
+  }
 
   // ── Dismiss method ─────────────────────────────────────────────────────────
   static const String _kDismissMethod = 'dismiss_method';
@@ -79,8 +97,10 @@ class AppPrefs {
   static String get dismissMethod =>
       _prefs.getString(_kDismissMethod) ?? 'slide';
 
-  static Future<void> setDismissMethod(String key) =>
-      _prefs.setString(_kDismissMethod, key);
+  static Future<void> setDismissMethod(String key) async {
+    await _prefs.setString(_kDismissMethod, key);
+    _syncToSqlite('dismiss_method', key);
+  }
 
   // ── Vibration intensity ────────────────────────────────────────────────────
   static const String _kVibrationIntensity = 'vibration_intensity';
@@ -89,6 +109,8 @@ class AppPrefs {
   static String get vibrationIntensity =>
       _prefs.getString(_kVibrationIntensity) ?? 'medium';
 
-  static Future<void> setVibrationIntensity(String key) =>
-      _prefs.setString(_kVibrationIntensity, key);
+  static Future<void> setVibrationIntensity(String key) async {
+    await _prefs.setString(_kVibrationIntensity, key);
+    _syncToSqlite('vibration_intensity', key);
+  }
 }

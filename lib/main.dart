@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:video_player/video_player.dart';
 
 import 'core/animations/screen_transitions.dart';
 import 'core/config/env.dart';
+import 'core/database/app_database.dart';
+import 'core/database/settings_sync.dart';
 import 'core/global_services/cloudinary_services.dart';
+import 'core/global_services/foreground_service.dart';
 import 'core/network/network_service.dart';
+import 'core/overlay/overlay_service.dart';
+import 'core/overlay/overlay_widget.dart';
 import 'core/router/app_router.dart';
 import 'core/session/user_session.dart';
 import 'core/shared_prefs/shared_prefs.dart';
@@ -15,8 +21,22 @@ import 'features/login/login_screen.dart';
 import 'features/network_error/network_error_screen.dart';
 import 'features/splashscreen/splashscreen.dart';
 
+/// Overlay entry point — called by flutter_overlay_window when the system
+/// overlay is shown. Must be top-level and annotated with @pragma.
+@pragma("vm:entry-point")
+void overlayMain() {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const MaterialApp(
+    debugShowCheckedModeBanner: false,
+    home: ProximityOverlayCard(),
+  ));
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize port for communication between foreground task and main isolate.
+  FlutterForegroundTask.initCommunicationPort();
 
   // Only load the lightweight env file before runApp — everything else
   // initializes inside the widget tree so the OS sees a first frame quickly
@@ -52,6 +72,12 @@ class _ProximityAppState extends State<ProximityApp> {
     // Cloudinary URL helper (sync, cheap).
     CloudinaryService.instance.init();
 
+    // Initialize foreground service (lightweight, just sets options).
+    ProximityForegroundService.instance.init();
+
+    // Start listening for overlay messages (e.g. 'overlay_ready', 'open_app').
+    OverlayService.instance.startListening();
+
     // Mapbox access token — skip gracefully if not configured.
     final mapboxToken = Env.mapboxPublicTokenOrNull;
     if (mapboxToken != null) {
@@ -68,10 +94,33 @@ class _ProximityAppState extends State<ProximityApp> {
       initSupabase(),
       AppPrefs.init(),
       splashController.initialize(),
+      // Request notification permission early so the OS prompt appears once
+      // during startup. The user just taps "Allow" and never thinks about it
+      // again — no manual settings navigation needed.
+      ProximityForegroundService.instance.requestPermissions(),
+      // Check overlay permission (doesn't prompt — just caches the status).
+      OverlayService.instance.checkPermission(),
     ]);
+
+    // Request "Display over other apps" permission. This opens a settings
+    // page on the first run — the user toggles it once and never sees it again.
+    // We do this after the other parallel inits so it doesn't block the splash.
+    await OverlayService.instance.requestPermission();
 
     // Restore user session (depends on both Supabase + AppPrefs being ready).
     await UserSession.instance.restore();
+
+    // Initialize SQLite database and run one-time migrations.
+    await AppDatabase.instance.init();
+    await SettingsSync.instance.migrateTripsToSqlite();
+    await SettingsSync.instance.pushToSqlite();
+
+    // If a user is logged in, pull their settings from the cloud so a new
+    // device gets the correct preferences without manual reconfiguration.
+    if (UserSession.instance.isLoggedIn) {
+      // Fire-and-forget — don't block startup on network.
+      SettingsSync.instance.pullFromCloud();
+    }
 
     await splashController.setVolume(1.0);
 

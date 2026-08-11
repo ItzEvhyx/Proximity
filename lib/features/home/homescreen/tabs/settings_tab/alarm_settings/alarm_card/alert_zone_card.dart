@@ -23,10 +23,18 @@ class _AlertZonePickerSheet extends StatefulWidget {
   State<_AlertZonePickerSheet> createState() => _AlertZonePickerSheetState();
 }
 
-class _AlertZonePickerSheetState extends State<_AlertZonePickerSheet> {
+class _AlertZonePickerSheetState extends State<_AlertZonePickerSheet>
+    with SingleTickerProviderStateMixin {
   late bool _isMeters; // true = meters, false = kilometers
   late List<TextEditingController> _controllers;
   int _phaseCount = 1;
+
+  /// Per-phase inline error messages (null = no error).
+  List<String?> _errors = [null, null, null];
+
+  // ── Shake animation (like solve-to-snooze) ──────────────────────────────
+  late final AnimationController _shakeCtrl;
+  late final Animation<double> _shakeOffset;
 
   @override
   void initState() {
@@ -37,10 +45,22 @@ class _AlertZonePickerSheetState extends State<_AlertZonePickerSheet> {
     _controllers = List.generate(3, (i) {
       final value = i < distances.length ? distances[i] : 0;
       final displayValue = _isMeters ? value : (value / 1000);
-      final text =
-          i < distances.length ? _formatValue(displayValue) : '';
+      final text = i < distances.length ? _formatValue(displayValue) : '';
       return TextEditingController(text: text);
     });
+
+    _shakeCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _shakeOffset = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0, end: -10), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -10, end: 10), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: 10, end: -7), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: -7, end: 5), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: 5, end: -2), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: -2, end: 0), weight: 1),
+    ]).animate(CurvedAnimation(parent: _shakeCtrl, curve: Curves.easeOut));
   }
 
   String _formatValue(num value) {
@@ -53,6 +73,7 @@ class _AlertZonePickerSheetState extends State<_AlertZonePickerSheet> {
     for (final c in _controllers) {
       c.dispose();
     }
+    _shakeCtrl.dispose();
     super.dispose();
   }
 
@@ -63,25 +84,67 @@ class _AlertZonePickerSheetState extends State<_AlertZonePickerSheet> {
     return (val * 1000).round();
   }
 
+  /// Validates all phase inputs. Returns true if valid, false if errors found.
+  /// Sets inline error messages and triggers shake on failure.
+  bool _validate() {
+    final newErrors = <String?>[null, null, null];
+    bool hasError = false;
+
+    final distances = <int>[];
+    for (var i = 0; i < _phaseCount; i++) {
+      final text = _controllers[i].text.trim();
+      if (text.isEmpty) {
+        newErrors[i] = 'Please enter a distance.';
+        hasError = true;
+        distances.add(0);
+        continue;
+      }
+      final meters = _parseToMeters(text);
+      distances.add(meters);
+
+      if (meters < 50) {
+        newErrors[i] = _isMeters
+            ? 'Must be at least 50 meters.'
+            : 'Must be at least 0.05 Km.';
+        hasError = true;
+      } else if (meters > 5000) {
+        newErrors[i] = _isMeters
+            ? 'Cannot exceed 5000 meters.'
+            : 'Cannot exceed 5 Km.';
+        hasError = true;
+      }
+    }
+
+    // Check descending order (each phase must be smaller than the previous).
+    if (!hasError) {
+      for (var i = 1; i < _phaseCount; i++) {
+        if (distances[i] >= distances[i - 1]) {
+          newErrors[i] = 'Must be smaller than Phase $i.';
+          hasError = true;
+        }
+      }
+    }
+
+    setState(() => _errors = newErrors);
+
+    if (hasError) {
+      _shakeCtrl.forward(from: 0);
+      HapticFeedback.mediumImpact();
+    }
+
+    return !hasError;
+  }
+
   Future<void> _save() async {
+    if (!_validate()) return;
+
     final distances = <int>[];
     for (var i = 0; i < _phaseCount; i++) {
       final meters = _parseToMeters(_controllers[i].text);
       if (meters > 0) distances.add(meters);
     }
 
-    // Validate: each phase must be smaller than the previous.
-    for (var i = 1; i < distances.length; i++) {
-      if (distances[i] >= distances[i - 1]) {
-        _showError('Phase ${i + 1} must be a smaller distance than Phase $i.');
-        return;
-      }
-    }
-
-    if (distances.isEmpty) {
-      _showError('Please enter at least one distance.');
-      return;
-    }
+    if (distances.isEmpty) return;
 
     await AppPrefs.setAlertZoneDistances(distances);
     await AppPrefs.setAlertZoneUnit(_isMeters ? 'meters' : 'km');
@@ -96,18 +159,9 @@ class _AlertZonePickerSheetState extends State<_AlertZonePickerSheet> {
     try {
       await supabase.from('profiles').update({
         'alert_zone_distances': distances,
+        'alert_zone_unit': _isMeters ? 'meters' : 'km',
       }).eq('id', userId);
     } catch (_) {}
-  }
-
-  void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
   }
 
   void _addPhase() {
@@ -124,6 +178,7 @@ class _AlertZonePickerSheetState extends State<_AlertZonePickerSheet> {
         _controllers[i].text = _controllers[i + 1].text;
       }
       _controllers[_phaseCount - 1].clear();
+      _errors = [null, null, null];
       _phaseCount--;
     });
   }
@@ -142,12 +197,17 @@ class _AlertZonePickerSheetState extends State<_AlertZonePickerSheet> {
         }
       }
       _isMeters = meters;
+      // Clear errors on unit switch since values are auto-converted.
+      _errors = [null, null, null];
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.paddingOf(context).bottom;
+    final rangeLabel = _isMeters
+        ? 'Enter a value between 50 – 5,000 meters'
+        : 'Enter a value between 0.05 – 5 Km';
 
     return Container(
       margin: const EdgeInsets.only(top: 80),
@@ -157,112 +217,139 @@ class _AlertZonePickerSheetState extends State<_AlertZonePickerSheet> {
       ),
       child: Padding(
         padding: EdgeInsets.fromLTRB(
-            24, 0, 24, MediaQuery.viewInsetsOf(context).bottom + bottomPadding + 24),
+            24,
+            0,
+            24,
+            MediaQuery.viewInsetsOf(context).bottom + bottomPadding + 24),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-            const SizedBox(height: 12),
-            // Drag handle
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
+              const SizedBox(height: 12),
+              // Drag handle
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            // Title
-            const Text(
-              'Alert Zone',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textDark,
+              const SizedBox(height: 20),
+              // Title
+              const Text(
+                'Alert Zone',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textDark,
+                ),
               ),
-            ),
-            const SizedBox(height: 18),
-            // Meters / Kilometers toggle
-            _UnitToggle(
-              isMeters: _isMeters,
-              onChanged: _toggleUnit,
-            ),
-            const SizedBox(height: 20),
-            // Phase inputs
-            for (var i = 0; i < _phaseCount; i++) ...[
-              _PhaseInput(
-                phaseIndex: i,
-                controller: _controllers[i],
-                unitLabel: _isMeters ? 'm' : 'Km',
-                canRemove: _phaseCount > 1,
-                onRemove: () => _removePhase(i),
-              ),
-              const SizedBox(height: 14),
-            ],
-            // Add phase button
-            if (_phaseCount < 3) ...[
-              GestureDetector(
-                onTap: _addPhase,
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: AppColors.primary.withValues(alpha: 0.4),
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.add_rounded,
-                        size: 18,
-                        color: AppColors.primary,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Add Phase ${_phaseCount + 1}',
-                        style: const TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ],
-                  ),
+              const SizedBox(height: 6),
+              // Range hint
+              Text(
+                rangeLabel,
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                  color: AppColors.textGrey,
                 ),
               ),
               const SizedBox(height: 18),
-            ],
-            // Save button
-            GestureDetector(
-              onTap: _save,
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(16),
+              // Meters / Kilometers toggle
+              _UnitToggle(
+                isMeters: _isMeters,
+                onChanged: _toggleUnit,
+              ),
+              const SizedBox(height: 20),
+              // Phase inputs with shake animation
+              AnimatedBuilder(
+                animation: _shakeOffset,
+                builder: (context, child) => Transform.translate(
+                  offset: Offset(_shakeOffset.value, 0),
+                  child: child,
                 ),
-                child: const Center(
-                  child: Text(
-                    'Save',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.white,
+                child: Column(
+                  children: [
+                    for (var i = 0; i < _phaseCount; i++) ...[
+                      _PhaseInput(
+                        phaseIndex: i,
+                        controller: _controllers[i],
+                        unitLabel: _isMeters ? 'm' : 'Km',
+                        canRemove: _phaseCount > 1,
+                        onRemove: () => _removePhase(i),
+                        hint: _isMeters ? '50 – 5000' : '0.05 – 5',
+                        error: _errors[i],
+                      ),
+                      const SizedBox(height: 14),
+                    ],
+                  ],
+                ),
+              ),
+              // Add phase button
+              if (_phaseCount < 3) ...[
+                GestureDetector(
+                  onTap: _addPhase,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.4),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.add_rounded,
+                          size: 18,
+                          color: AppColors.primary,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Add Phase ${_phaseCount + 1}',
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+              ],
+              // Save button
+              GestureDetector(
+                onTap: _save,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'Save',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.white,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
           ),
         ),
       ),
@@ -286,10 +373,12 @@ class _UnitToggle extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(child: _toggleOption('Meters', isMeters, () => onChanged(true))),
           Expanded(
               child:
-                  _toggleOption('Kilometers', !isMeters, () => onChanged(false))),
+                  _toggleOption('Meters', isMeters, () => onChanged(true))),
+          Expanded(
+              child: _toggleOption(
+                  'Kilometers', !isMeters, () => onChanged(false))),
         ],
       ),
     );
@@ -320,7 +409,7 @@ class _UnitToggle extends StatelessWidget {
   }
 }
 
-/// A single phase distance input row.
+/// A single phase distance input row with optional inline error.
 class _PhaseInput extends StatelessWidget {
   const _PhaseInput({
     required this.phaseIndex,
@@ -328,6 +417,8 @@ class _PhaseInput extends StatelessWidget {
     required this.unitLabel,
     required this.canRemove,
     required this.onRemove,
+    this.hint,
+    this.error,
   });
 
   final int phaseIndex;
@@ -335,9 +426,13 @@ class _PhaseInput extends StatelessWidget {
   final String unitLabel;
   final bool canRemove;
   final VoidCallback onRemove;
+  final String? hint;
+  final String? error;
 
   @override
   Widget build(BuildContext context) {
+    final hasError = error != null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -373,7 +468,10 @@ class _PhaseInput extends StatelessWidget {
               child: Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.border, width: 1.5),
+                  border: Border.all(
+                    color: hasError ? AppColors.error : AppColors.border,
+                    width: hasError ? 2 : 1.5,
+                  ),
                 ),
                 child: TextField(
                   controller: controller,
@@ -389,7 +487,7 @@ class _PhaseInput extends StatelessWidget {
                     color: AppColors.textDark,
                   ),
                   decoration: InputDecoration(
-                    hintText: 'Distance',
+                    hintText: hint ?? 'Distance',
                     hintStyle: TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 14,
@@ -405,7 +503,8 @@ class _PhaseInput extends StatelessWidget {
             const SizedBox(width: 10),
             // Unit badge
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               decoration: BoxDecoration(
                 color: AppColors.primary,
                 borderRadius: BorderRadius.circular(14),
@@ -422,6 +521,28 @@ class _PhaseInput extends StatelessWidget {
             ),
           ],
         ),
+        // Inline error message
+        if (hasError) ...[
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              const Icon(Icons.error_outline_rounded,
+                  size: 14, color: AppColors.error),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  error!,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.error,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }

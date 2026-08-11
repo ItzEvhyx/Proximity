@@ -1,10 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 import '../../../core/animations/tabs_transitions.dart';
+import '../../../core/global_services/wake_service.dart';
 import '../../../core/navbar/navbar_widget.dart';
+import '../../../core/overlay/overlay_service.dart';
 import '../../../core/skeleton_loading/skeleton_loading.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/search_bar.dart';
@@ -32,7 +35,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   static const Duration _revealDuration = Duration(milliseconds: 300);
 
   int _tabIndex = 0;
@@ -56,6 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _mapsController = MapsController();
     _mapsController.onAlarmTriggered = _onProximityAlarm;
     // Safety net: reveal the UI even if the map never reports ready (e.g. no
@@ -65,13 +69,33 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _readyTimeout?.cancel();
     _autoSelectTimer?.cancel();
     _mapsController.dispose();
     _speech.stop();
+    // Ensure overlay is hidden if screen is disposed while tracking.
+    OverlayService.instance.hide();
     super.dispose();
   }
 
+  // ── App lifecycle (show/hide overlay when backgrounded) ────────────────
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // App came back to foreground — hide the overlay since the in-app
+      // UI is visible and the overlay would be redundant/distracting.
+      OverlayService.instance.hide();
+    } else if (state == AppLifecycleState.inactive) {
+      // App is about to go to background — re-show overlay if tracking.
+      // We use 'inactive' (not 'paused') because the engine is still active
+      // here and can reliably execute the showOverlay call.
+      if (_mapsController.tracking) {
+        OverlayService.instance.show();
+      }
+    }
+  }
 
   void _handleMapReady() {
     if (_mapReady || !mounted) return;
@@ -83,6 +107,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _onProximityAlarm() {
     if (!mounted) return;
+    // Wake the screen and show over lock screen (like the default Clock app).
+    WakeService.instance.wakeUpScreen();
+    // Bring the app to the foreground if it's in the background.
+    FlutterForegroundTask.launchApp('/');
     // Navigate to the fullscreen alarm dismissal screen.
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -92,6 +120,8 @@ class _HomeScreenState extends State<HomeScreen> {
           eta: _mapsController.etaToDestination ?? '—',
           onDismissed: () {
             _mapsController.stopTracking();
+            // Clear wake flags so the app doesn't permanently show over lock.
+            WakeService.instance.clearWakeFlags();
             Navigator.of(context).pop();
           },
         ),
@@ -509,11 +539,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               showingNearby: _mapsController.showingNearby,
                               error: _mapsController.error,
                               onSelect: _mapsController.selectResult,
-                              collapsed: _mapsController.resultsCollapsed,
-                              onToggleCollapse: () =>
-                                  _mapsController.resultsCollapsed
-                                      ? _mapsController.expandResults()
-                                      : _mapsController.collapseResults(),
+                              onHide: _mapsController.dismissResults,
                             );
                           },
                         ),

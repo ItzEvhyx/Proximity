@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
+import '../../../../../../core/global_services/foreground_service.dart';
+import '../../../../../../core/overlay/overlay_service.dart';
 import '../../../../../../core/theme/app_colors.dart';
 
 /// Displays the full route on a Mapbox map with a green polyline,
@@ -37,12 +39,48 @@ class PathScreen extends StatefulWidget {
   State<PathScreen> createState() => _PathScreenState();
 }
 
-class _PathScreenState extends State<PathScreen> {
+class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
   MapboxMap? _map;
   bool _mapReady = false;
 
   static const String _routeSourceId = 'route-line-source';
   static const String _routeLayerId = 'route-line-layer';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Start foreground service so navigation survives in the background.
+    ProximityForegroundService.instance.start(
+      title: 'Navigating',
+      text: '${widget.totalDistance} · ETA ${widget.totalEta}',
+    );
+    // Pre-load overlay data for when the user backgrounds the app.
+    OverlayService.instance.update(
+      eta: widget.totalEta,
+      distance: widget.totalDistance,
+    );
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    OverlayService.instance.hide();
+    // Stop the foreground service when the user leaves the navigation screen.
+    ProximityForegroundService.instance.stop();
+    super.dispose();
+  }
+
+  // ── Lifecycle: show overlay when backgrounded ──────────────────────────
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive) {
+      OverlayService.instance.show();
+    } else if (state == AppLifecycleState.resumed) {
+      OverlayService.instance.hide();
+    }
+  }
 
   void _onMapCreated(MapboxMap map) {
     _map = map;

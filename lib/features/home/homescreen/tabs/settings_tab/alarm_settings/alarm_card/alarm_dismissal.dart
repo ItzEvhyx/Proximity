@@ -95,6 +95,9 @@ class _DismissMethodScreenState extends State<DismissMethodScreen> {
       _selectedKey = key;
       _dismissed = false;
     });
+    // Instantly persist the new dismiss method so it takes effect immediately.
+    AppPrefs.setDismissMethod(key);
+    _saveToDatabase(key);
     _startAlarm();
   }
 
@@ -123,8 +126,7 @@ class _DismissMethodScreenState extends State<DismissMethodScreen> {
   }
 
   Future<void> _save() async {
-    await AppPrefs.setDismissMethod(_selectedKey);
-    _saveToDatabase(_selectedKey);
+    // Already saved on card tap — just navigate back.
     if (mounted) Navigator.of(context).pop();
   }
 

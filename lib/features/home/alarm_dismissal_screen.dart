@@ -7,6 +7,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
 import '../../../core/global_services/vibration_service.dart';
+import '../../../core/global_services/volume_service.dart';
 import '../../../core/shared_prefs/shared_prefs.dart';
 import '../../../core/theme/app_colors.dart';
 
@@ -48,6 +49,8 @@ class _AlarmDismissalScreenState extends State<AlarmDismissalScreen> {
   @override
   void initState() {
     super.initState();
+    // Keep screen on while alarm is ringing (prevents display sleep timeout).
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     _startAlarm();
     // Loop playback.
     _player.playerStateStream.listen((state) {
@@ -65,6 +68,9 @@ class _AlarmDismissalScreenState extends State<AlarmDismissalScreen> {
   }
 
   Future<void> _startAlarm() async {
+    // Override system volume to maximum so the alarm is always audible.
+    await VolumeService.instance.maximizeVolume();
+
     final soundKey = AppPrefs.alarmSound;
     final asset = _soundAssets[soundKey] ?? _soundAssets['default_alarm']!;
     try {
@@ -79,6 +85,9 @@ class _AlarmDismissalScreenState extends State<AlarmDismissalScreen> {
     setState(() => _dismissed = true);
     _player.stop();
     VibrationService.instance.stop();
+    VolumeService.instance.restoreVolume();
+    // Restore normal system UI mode.
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     widget.onDismissed();
   }
 
@@ -87,6 +96,7 @@ class _AlarmDismissalScreenState extends State<AlarmDismissalScreen> {
     _player.stop();
     _player.dispose();
     VibrationService.instance.stop();
+    VolumeService.instance.restoreVolume();
     super.dispose();
   }
 

@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/database/settings_sync.dart';
 import '../../core/session/user_session.dart';
 import 'login_repo.dart';
 import 'login_validator.dart';
@@ -139,6 +140,9 @@ class LoginService {
   Future<void> _persistSession() async {
     final uid = _repo.currentUserId;
     if (uid != null) await UserSession.instance.onLogin(uid);
+    // Pull the user's settings from the cloud so a new device gets the
+    // correct alarm/vibration/dismiss/zone preferences immediately.
+    SettingsSync.instance.pullFromCloud();
   }
 }
 
