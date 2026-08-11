@@ -77,6 +77,9 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
   bool _radarUpdating = false;
   bool _radarActive = false;
 
+  // ── Destination pin (red, no radar) ────────────────────────────────────
+  PointAnnotation? _destPinAnnotation;
+
   static const int _radarRingCount = 3;
   static const double _radarMaxRadius = 90;
   static const double _pinHeight = 52;
@@ -192,9 +195,7 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
   }
 
   // ── Pin colors ─────────────────────────────────────────────────────────
-  Color get _pinColor => (_pinned?.isCurrentLocation ?? false)
-      ? AppColors.currentLocation
-      : AppColors.primary;
+  Color get _pinColor => AppColors.primary;
 
   /// Rasterizes (once, cached) the teardrop pin PNG in [color] at the device
   /// pixel ratio so the native image matches the intended on-screen size.
@@ -237,8 +238,9 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
 
   // ── Show / move / clear the native marker ──────────────────────────────
 
-  /// Shows a marker for [place]. Searched destinations animate the camera; the
-  /// current-location pin is placed without moving the camera.
+  /// Shows a marker for [place]. Searched destinations get a red pin and
+  /// animate the camera; the current-location pin (green + radar) is placed
+  /// without moving the camera.
   Future<void> _showPin(PlaceResult place, {bool animateCamera = true}) async {
     final map = _map;
     // Don't yank the pin out from under an in-progress drag.
@@ -248,22 +250,62 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
     }
     setState(() => _pinned = place);
 
-    if (map != null && animateCamera) {
-      await map.flyTo(
-        CameraOptions(
-          center: Point(coordinates: Position(place.longitude, place.latitude)),
-          zoom: _pinZoom,
-        ),
-        MapAnimationOptions(duration: 1200),
-      );
+    if (place.isCurrentLocation) {
+      // Green current-location pin with radar.
+      await _placeNativeMarker(place);
+      await _reprojectHitArea();
+    } else {
+      // Red destination pin (separate annotation, no radar).
+      await _placeDestinationPin(place);
+
+      if (map != null && animateCamera) {
+        await map.flyTo(
+          CameraOptions(
+            center:
+                Point(coordinates: Position(place.longitude, place.latitude)),
+            zoom: _pinZoom,
+          ),
+          MapAnimationOptions(duration: 1200),
+        );
+      }
+
+      await _reprojectHitArea();
+
+      if (animateCamera) {
+        // Highlight the searched building's footprint (OSM yellow outline).
+        unawaited(_showBuildingHighlight(place));
+      }
     }
+  }
 
-    await _placeNativeMarker(place);
-    await _reprojectHitArea();
+  /// Places or moves a red destination pin (no radar).
+  Future<void> _placeDestinationPin(PlaceResult place) async {
+    final map = _map;
+    if (map == null) return;
+    _pinManager ??= await map.annotations.createPointAnnotationManager();
 
-    if (animateCamera) {
-      // Highlight the searched building's footprint (OSM yellow outline).
-      unawaited(_showBuildingHighlight(place));
+    final geometry =
+        Point(coordinates: Position(place.longitude, place.latitude));
+    final bytes = await _pinBytesFor(AppColors.error);
+
+    try {
+      final existing = _destPinAnnotation;
+      if (existing == null) {
+        _destPinAnnotation = await _pinManager!.create(
+          PointAnnotationOptions(
+            geometry: geometry,
+            image: bytes,
+            iconSize: 1.0,
+            iconAnchor: IconAnchor.BOTTOM,
+          ),
+        );
+      } else {
+        existing.geometry = geometry;
+        existing.image = bytes;
+        await _pinManager!.update(existing);
+      }
+    } catch (e) {
+      debugPrint('placeDestinationPin failed: $e');
     }
   }
 
@@ -368,9 +410,13 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
         if (_pinAnnotation != null) await _pinManager?.delete(_pinAnnotation!);
       } catch (_) {}
       try {
+        if (_destPinAnnotation != null) await _pinManager?.delete(_destPinAnnotation!);
+      } catch (_) {}
+      try {
         await _radarManager?.deleteAll();
       } catch (_) {}
       _pinAnnotation = null;
+      _destPinAnnotation = null;
       _radarRings.clear();
       _radarDot = null;
     }();

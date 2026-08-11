@@ -6,8 +6,9 @@ import '../../../../../core/animations/screen_transitions.dart';
 import '../../../../../core/shared_prefs/shared_prefs.dart';
 import '../../../../../core/supabase/supabase_client.dart';
 import '../../../../../core/theme/app_colors.dart';
+import 'alarm_settings/alarm_card/alarm_dismissal.dart';
 import 'alarm_settings/alarm_card/alarm_sound_card.dart';
-import 'alarm_settings/alarm_card/alarm_style.dart';
+import 'alarm_settings/alarm_card/alarm_vibration.dart';
 import 'alarm_settings/alarm_card/alert_zone_card.dart';
 import 'profile_avatar_service.dart';
 
@@ -142,17 +143,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                 ),
                 _ChevronRow(
-                  icon: Icons.graphic_eq_rounded,
-                  label: 'Alarm mode',
-                  sub: _alarmModeLabel(AppPrefs.alarmMode),
-                  onTap: () async {
-                    await _pushRoute(
-                      ScreenTransitions.fadeRightToLeft(const AlarmScreen()),
-                    );
-                    if (mounted) setState(() {});
-                  },
-                ),
-                _ChevronRow(
                   icon: Icons.my_location_rounded,
                   label: 'Alert zone distances',
                   sub: _alertZoneLabel(),
@@ -164,12 +154,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _ChevronRow(
                   icon: Icons.swipe_right_rounded,
                   label: 'Dismiss method',
-                  sub: 'Swipe to dismiss',
+                  sub: _dismissMethodLabel(AppPrefs.dismissMethod),
+                  onTap: () async {
+                    await _pushRoute(
+                      ScreenTransitions.fadeRightToLeft(
+                          const DismissMethodScreen()),
+                    );
+                    if (mounted) setState(() {});
+                  },
                 ),
                 _ChevronRow(
                   icon: Icons.vibration_rounded,
                   label: 'Vibration intensity',
-                  sub: 'Medium',
+                  sub: _vibrationLabel(AppPrefs.vibrationIntensity),
+                  onTap: () async {
+                    await showVibrationPicker(context);
+                    if (mounted) setState(() {});
+                  },
                 ),
               ],
             ),
@@ -272,15 +273,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return labels[key] ?? 'Default Alarm';
   }
 
-  /// Maps alarm mode keys to human-readable labels.
-  String _alarmModeLabel(String key) {
-    const labels = {
-      'push_notification': 'Push Notification',
-      'fullscreen': 'Fullscreen',
-    };
-    return labels[key] ?? 'Push Notification';
-  }
-
   /// Builds the subtitle for alert zone distances (e.g. '400m · 200m · 50m').
   String _alertZoneLabel() {
     final distances = AppPrefs.alertZoneDistances;
@@ -292,6 +284,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
       return '${d}m';
     }).join(' · ');
+  }
+
+  /// Maps dismiss method keys to human-readable labels.
+  String _dismissMethodLabel(String key) {
+    const labels = {
+      'slide': 'Slide to snooze',
+      'shake': 'Shake to snooze',
+      'solve': 'Solve to snooze',
+    };
+    return labels[key] ?? 'Slide to snooze';
+  }
+
+  /// Maps vibration intensity keys to human-readable labels.
+  String _vibrationLabel(String key) {
+    const labels = {
+      'off': 'Off',
+      'light': 'Light',
+      'medium': 'Medium',
+      'strong': 'Strong',
+    };
+    return labels[key] ?? 'Medium';
   }
 }
 

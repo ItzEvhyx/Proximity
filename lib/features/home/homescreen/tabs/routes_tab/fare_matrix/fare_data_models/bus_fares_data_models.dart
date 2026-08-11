@@ -223,8 +223,6 @@ Widget howItWorksIconWidget(HowItWorksIcon icon, {double size = 22}) {
       return AssetIcon(
         'public/assets/icons/money_icon.png',
         size: size,
-        width: size * 1.3,
-        height: size,
         color: color,
       );
     case HowItWorksIcon.plus:

@@ -48,15 +48,6 @@ class AppPrefs {
   static Future<void> setAlarmSound(String key) =>
       _prefs.setString(_kAlarmSound, key);
 
-  // ── Alarm mode ─────────────────────────────────────────────────────────────
-  static const String _kAlarmMode = 'selected_alarm_mode';
-
-  /// The key of the selected alarm mode (e.g. 'push_notification', 'fullscreen').
-  static String get alarmMode => _prefs.getString(_kAlarmMode) ?? 'push_notification';
-
-  static Future<void> setAlarmMode(String key) =>
-      _prefs.setString(_kAlarmMode, key);
-
   // ── Alert zone distances ───────────────────────────────────────────────────
   static const String _kAlertZoneDistances = 'alert_zone_distances';
   static const String _kAlertZoneUnit = 'alert_zone_unit';
@@ -80,4 +71,24 @@ class AppPrefs {
 
   static Future<void> setAlertZoneUnit(String unit) =>
       _prefs.setString(_kAlertZoneUnit, unit);
+
+  // ── Dismiss method ─────────────────────────────────────────────────────────
+  static const String _kDismissMethod = 'dismiss_method';
+
+  /// The key of the selected dismiss method (e.g. 'slide', 'shake', 'solve').
+  static String get dismissMethod =>
+      _prefs.getString(_kDismissMethod) ?? 'slide';
+
+  static Future<void> setDismissMethod(String key) =>
+      _prefs.setString(_kDismissMethod, key);
+
+  // ── Vibration intensity ────────────────────────────────────────────────────
+  static const String _kVibrationIntensity = 'vibration_intensity';
+
+  /// The key of the selected vibration intensity (e.g. 'off', 'light', 'medium', 'strong').
+  static String get vibrationIntensity =>
+      _prefs.getString(_kVibrationIntensity) ?? 'medium';
+
+  static Future<void> setVibrationIntensity(String key) =>
+      _prefs.setString(_kVibrationIntensity, key);
 }

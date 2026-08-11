@@ -156,10 +156,12 @@ class _AlertZonePickerSheetState extends State<_AlertZonePickerSheet> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: Padding(
-        padding: EdgeInsets.fromLTRB(24, 0, 24, bottomPadding + 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+        padding: EdgeInsets.fromLTRB(
+            24, 0, 24, MediaQuery.viewInsetsOf(context).bottom + bottomPadding + 24),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
             const SizedBox(height: 12),
             // Drag handle
             Container(
@@ -261,6 +263,7 @@ class _AlertZonePickerSheetState extends State<_AlertZonePickerSheet> {
               ),
             ),
           ],
+          ),
         ),
       ),
     );

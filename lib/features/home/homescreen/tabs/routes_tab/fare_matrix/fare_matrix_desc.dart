@@ -42,9 +42,7 @@ class FareMatrixDesc extends StatelessWidget {
                 ),
                 const AssetIcon(
                   'public/assets/icons/money_icon.png',
-                  size: 32,
-                  width: 40,
-                  height: 32,
+                  size: 36,
                   color: AppColors.white,
                 ),
               ],

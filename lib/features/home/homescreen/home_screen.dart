@@ -8,6 +8,7 @@ import '../../../core/navbar/navbar_widget.dart';
 import '../../../core/skeleton_loading/skeleton_loading.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/search_bar.dart';
+import '../alarm_dismissal_screen.dart';
 import 'tabs/history_tab/history_tab.dart';
 import 'tabs/maps_tab/maps_controller.dart';
 import 'tabs/maps_tab/maps_tab.dart';
@@ -56,6 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _mapsController = MapsController();
+    _mapsController.onAlarmTriggered = _onProximityAlarm;
     // Safety net: reveal the UI even if the map never reports ready (e.g. no
     // network / stuck tiles) so the app is never stuck on the skeleton.
     _readyTimeout = Timer(const Duration(seconds: 8), _handleMapReady);
@@ -75,6 +77,26 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_mapReady || !mounted) return;
     _readyTimeout?.cancel();
     setState(() => _mapReady = true);
+  }
+
+  // ── Proximity alarm ────────────────────────────────────────────────────
+
+  void _onProximityAlarm() {
+    if (!mounted) return;
+    // Navigate to the fullscreen alarm dismissal screen.
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => AlarmDismissalScreen(
+          distance: _mapsController.distanceLabel,
+          eta: _mapsController.etaToDestination ?? '—',
+          onDismissed: () {
+            _mapsController.stopTracking();
+            Navigator.of(context).pop();
+          },
+        ),
+      ),
+    );
   }
 
   // ── Mic / voice search ─────────────────────────────────────────────────
@@ -472,6 +494,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         AnimatedBuilder(
                           animation: _mapsController,
                           builder: (context, _) {
+                            if (_mapsController.tracking) {
+                              return _TrackingCards(
+                                eta: _mapsController.etaToDestination ?? '—',
+                                distance: _mapsController.distanceLabel,
+                              );
+                            }
                             if (!_mapsController.resultsVisible) {
                               return const SizedBox.shrink();
                             }
@@ -578,6 +606,80 @@ class _HomeSkeleton extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// ETA + Distance cards shown below the search bar when tracking a confirmed
+/// destination. Compact green pills matching the app's design language.
+class _TrackingCards extends StatelessWidget {
+  const _TrackingCards({required this.eta, required this.distance});
+
+  final String eta;
+  final String distance;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Row(
+        children: [
+          Expanded(child: _TrackingPill(label: 'ETA', value: eta)),
+          const SizedBox(width: 10),
+          Expanded(child: _TrackingPill(label: 'Distance', value: distance)),
+        ],
+      ),
+    );
+  }
+}
+
+class _TrackingPill extends StatelessWidget {
+  const _TrackingPill({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.primary,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+              color: AppColors.white.withValues(alpha: 0.8),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: const TextStyle(
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w800,
+              fontSize: 18,
+              height: 1.0,
+              color: AppColors.white,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
     );
   }
 }

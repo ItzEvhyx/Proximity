@@ -245,12 +245,12 @@ class _SearchGuideSheetState extends State<_SearchGuideSheet> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Timeline: red pin → dashed → green pin
+                  // Timeline: green pin → dashed → red pin
                   Column(
                     children: [
                       const SizedBox(height: 14),
                       const Icon(Icons.location_on,
-                          size: 22, color: AppColors.error),
+                          size: 22, color: AppColors.primary),
                       ...List.generate(3, (_) => Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: Container(
@@ -264,7 +264,7 @@ class _SearchGuideSheetState extends State<_SearchGuideSheet> {
                           )),
                       const SizedBox(height: 8),
                       const Icon(Icons.location_on,
-                          size: 22, color: AppColors.primary),
+                          size: 22, color: AppColors.error),
                     ],
                   ),
                   const SizedBox(width: 12),

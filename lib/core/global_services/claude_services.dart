@@ -35,10 +35,15 @@ class RouteResult {
   final String totalDistance;
   final List<RouteStep> steps;
 
+  /// The full route geometry as a list of [lng, lat] coordinate pairs.
+  /// Used to draw the route line on the map.
+  final List<List<double>> geometry;
+
   const RouteResult({
     required this.totalEta,
     required this.totalDistance,
     required this.steps,
+    this.geometry = const [],
   });
 }
 
@@ -121,6 +126,14 @@ class ClaudeService {
 
     final steps = (legs[0]['steps'] as List);
 
+    // Extract the full route geometry for map rendering.
+    final geometryJson = route['geometry'] as Map<String, dynamic>;
+    final rawCoords = geometryJson['coordinates'] as List;
+    final geometry = rawCoords
+        .map<List<double>>(
+            (c) => [(c as List)[0] as double, (c as List)[1] as double])
+        .toList();
+
     // Convert Mapbox steps into our RouteStep format.
     final routeSteps = _convertMapboxSteps(steps);
 
@@ -128,6 +141,7 @@ class ClaudeService {
       totalEta: _formatDuration(durationSec),
       totalDistance: _formatDistance(distanceM),
       steps: routeSteps,
+      geometry: geometry,
     );
   }
 
@@ -224,6 +238,7 @@ class ClaudeService {
         totalEta: result.totalEta,
         totalDistance: result.totalDistance,
         steps: [adjusted, ...result.steps.skip(1)],
+        geometry: result.geometry,
       );
     }
 

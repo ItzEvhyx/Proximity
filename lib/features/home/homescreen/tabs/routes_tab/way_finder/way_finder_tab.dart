@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
+import '../../../../../../core/animations/screen_transitions.dart';
 import '../../../../../../core/global_services/claude_services.dart';
 import '../../../../../../core/skeleton_loading/skeleton_loading.dart';
 import '../../../../../../core/theme/app_colors.dart';
+import '../../../../../../core/widgets/asset_icon.dart';
 import '../../maps_tab/place_result.dart';
 import 'eta_distance_cards.dart';
 import 'finder_desc.dart';
+import 'path_screen.dart';
 import 'route_nodes.dart';
 import 'route_transit_selector.dart';
 import 'search_guide.dart';
@@ -108,6 +111,29 @@ class WayFinderTabState extends State<WayFinderTab> {
         });
       }
     }
+  }
+
+  void _openPathScreen() {
+    if (_routeResult == null) return;
+    final modeStr = switch (_travelMode) {
+      TravelMode.drive => 'drive',
+      TravelMode.transit => 'transit',
+      TravelMode.walk => 'walk',
+    };
+    Navigator.of(context).push(
+      ScreenTransitions.fadeRightToLeft(
+        PathScreen(
+          geometry: _routeResult!.geometry,
+          totalEta: _routeResult!.totalEta,
+          totalDistance: _routeResult!.totalDistance,
+          travelMode: modeStr,
+          originLat: _origin!.latitude,
+          originLng: _origin!.longitude,
+          destLat: _destination!.latitude,
+          destLng: _destination!.longitude,
+        ),
+      ),
+    );
   }
 
   @override
@@ -232,7 +258,44 @@ class WayFinderTabState extends State<WayFinderTab> {
                 isDestination: s.isDestination,
               ))
           .toList();
-      return RouteNodesWidget(nodes: nodes);
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          RouteNodesWidget(nodes: nodes),
+          const SizedBox(height: 16),
+          // View in map button
+          Center(
+            child: GestureDetector(
+              onTap: () => _openPathScreen(),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AssetIcon('public/assets/icons/maps_icon.png',
+                        size: 18, color: AppColors.white),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'View in map',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
     }
 
     // No route yet — prompt user to search

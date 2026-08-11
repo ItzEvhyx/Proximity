@@ -67,6 +67,8 @@ class _BottomCard extends StatelessWidget {
         return _DraggableInfoCard(
           trips: controller.pinnedHistory,
           onDeleteTrip: controller.removeTrip,
+          onTapTrip: controller.selectTrip,
+          onReverseTrip: controller.reverseTrip,
         );
       },
     );
@@ -318,10 +320,12 @@ class _ConfirmButton extends StatelessWidget {
 /// can be dragged taller or shorter. Shows the user's recent pinned locations
 /// as "past trips" (the most recent [MapsController._maxHistory]).
 class _DraggableInfoCard extends StatelessWidget {
-  const _DraggableInfoCard({this.trips = const [], this.onDeleteTrip});
+  const _DraggableInfoCard({this.trips = const [], this.onDeleteTrip, this.onTapTrip, this.onReverseTrip});
 
   final List<PinnedTrip> trips;
   final ValueChanged<PinnedTrip>? onDeleteTrip;
+  final ValueChanged<PinnedTrip>? onTapTrip;
+  final ValueChanged<PinnedTrip>? onReverseTrip;
 
   @override
   Widget build(BuildContext context) {
@@ -412,10 +416,17 @@ class _DraggableInfoCard extends StatelessWidget {
                     else
                       for (final trip in trips) ...[
                         _TripRow(
+                          key: ValueKey('${trip.name}_${trip.pinnedAt.millisecondsSinceEpoch}'),
                           trip: trip,
                           onDelete: onDeleteTrip == null
                               ? null
                               : () => onDeleteTrip!(trip),
+                          onTap: onTapTrip == null
+                              ? null
+                              : () => onTapTrip!(trip),
+                          onReverse: onReverseTrip == null
+                              ? null
+                              : () => onReverseTrip!(trip),
                         ),
                         const Divider(
                           color: AppColors.textGrey,
@@ -440,10 +451,12 @@ class _DraggableInfoCard extends StatelessWidget {
 /// Deleting a trip plays a scale-down + fade "pop" before the row collapses
 /// and closes the gap, instead of just disappearing instantly.
 class _TripRow extends StatefulWidget {
-  const _TripRow({required this.trip, this.onDelete});
+  const _TripRow({super.key, required this.trip, this.onDelete, this.onTap, this.onReverse});
 
   final PinnedTrip trip;
   final VoidCallback? onDelete;
+  final VoidCallback? onTap;
+  final VoidCallback? onReverse;
 
   @override
   State<_TripRow> createState() => _TripRowState();
@@ -521,7 +534,10 @@ class _TripRowState extends State<_TripRow> with SingleTickerProviderStateMixin 
           ),
         );
       },
-      child: Padding(
+      child: GestureDetector(
+        onTap: widget.onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -564,14 +580,13 @@ class _TripRowState extends State<_TripRow> with SingleTickerProviderStateMixin 
                 ),
                 const SizedBox(height: 8),
                 _ReverseTripButton(
-                  onTap: () {
-                    // TODO: wire up trip reversal once routing is implemented.
-                  },
+                  onTap: widget.onReverse,
                 ),
               ],
             ),
           ],
         ),
+      ),
       ),
     );
   }

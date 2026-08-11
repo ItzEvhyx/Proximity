@@ -11,6 +11,8 @@ class PinnedTrip {
     this.address,
     this.distanceMeters,
     this.startLocationName,
+    this.startLongitude,
+    this.startLatitude,
   });
 
   final String name;
@@ -22,6 +24,10 @@ class PinnedTrip {
   /// Human label of where the user was when they pinned this (their current
   /// location at the time), used as the trip's starting point.
   final String? startLocationName;
+
+  /// Coordinates of where the user was when they made this trip.
+  final double? startLongitude;
+  final double? startLatitude;
 
   /// When the location was confirmed.
   final DateTime pinnedAt;
@@ -63,6 +69,8 @@ class PinnedTrip {
         'lat': latitude,
         'distance': distanceMeters,
         'start': startLocationName,
+        'startLng': startLongitude,
+        'startLat': startLatitude,
         'at': pinnedAt.toIso8601String(),
       };
 
@@ -79,6 +87,8 @@ class PinnedTrip {
       latitude: lat,
       distanceMeters: (json['distance'] as num?)?.toDouble(),
       startLocationName: json['start'] as String?,
+      startLongitude: (json['startLng'] as num?)?.toDouble(),
+      startLatitude: (json['startLat'] as num?)?.toDouble(),
       pinnedAt: at,
     );
   }

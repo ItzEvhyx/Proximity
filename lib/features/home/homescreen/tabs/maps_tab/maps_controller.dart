@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart' as geo;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../../../core/shared_prefs/shared_prefs.dart';
 import 'maps_search_service.dart';
 import 'pinned_trip.dart';
 import 'place_result.dart';
@@ -33,7 +34,7 @@ class MapsController extends ChangeNotifier {
   }
 
   /// How many recent pinned locations to keep; the rest are discarded.
-  static const int _maxHistory = 4;
+  static const int _maxHistory = 5;
   static const String _historyPrefsKey = 'pinned_trips_v1';
 
   final MapsSearchService _service;
@@ -141,6 +142,30 @@ class MapsController extends ChangeNotifier {
   /// Optional hook fired when the user taps "Confirm Location".
   ValueChanged<PlaceResult>? onConfirmed;
 
+  /// Optional hook fired when user enters an alert zone (proximity alarm).
+  VoidCallback? onAlarmTriggered;
+
+  // ── ETA / Distance tracking (after confirm) ────────────────────────────
+  /// Distance in meters from the user to the confirmed destination.
+  double? _distanceToDestination;
+  double? get distanceToDestination => _distanceToDestination;
+
+  /// Estimated time of arrival string (e.g. "5 min").
+  String? _etaToDestination;
+  String? get etaToDestination => _etaToDestination;
+
+  /// True while tracking (after confirm, before alarm or clear).
+  bool _tracking = false;
+  bool get tracking => _tracking;
+
+  /// Which alert zone phases have already fired (to avoid re-triggering).
+  final Set<int> _firedAlertPhases = {};
+
+  /// The confirmed destination coordinates (kept separately so poll can
+  /// compute distance even after _searched is frozen).
+  double? _confirmedLng;
+  double? _confirmedLat;
+
   /// Called by the map renderer once it can move the camera and draw pins.
   void attachMap({
     required void Function(PlaceResult place, {bool animateCamera}) onShowPin,
@@ -238,6 +263,11 @@ class MapsController extends ChangeNotifier {
     } else if (_resultsVisible) {
       notifyListeners();
     }
+
+    // Update ETA/distance tracking and check proximity if confirmed.
+    if (_tracking) {
+      _updateDistanceAndEta();
+    }
     // No notifyListeners when results are hidden — avoids unnecessary rebuilds.
   }
 
@@ -272,6 +302,15 @@ class MapsController extends ChangeNotifier {
 
   void _onFocusChanged() {
     if (searchFocus.hasFocus) {
+      // If the user taps the search bar while a location is confirmed,
+      // reset the confirmed state so a new search can proceed.
+      if (_confirmed) {
+        _confirmed = false;
+        _searched = null;
+        _locked = false;
+        _tracking = false;
+      }
+
       final text = searchText.text.trim();
       // Opening the field: if empty, show nearby landmarks. If it holds a
       // place we just selected, keep the dropdown closed (the user is looking
@@ -427,7 +466,6 @@ class MapsController extends ChangeNotifier {
     _debounceTimer?.cancel();
     _requestSeq++; // cancel any in-flight search results
 
-    searchFocus.unfocus();
     _results = const [];
     _resultsVisible = false;
     _loading = false;
@@ -480,6 +518,7 @@ class MapsController extends ChangeNotifier {
     // Keep the dropdown dismissed even if focus bounces back to the field.
     _results = const [];
     _resultsVisible = false;
+    searchFocus.unfocus();
     notifyListeners();
 
     _onShowPin?.call(resolved, animateCamera: true);
@@ -572,6 +611,14 @@ class MapsController extends ChangeNotifier {
     searchText.addListener(_onQueryChanged);
     _results = const [];
     _resultsVisible = false;
+
+    // Start proximity tracking.
+    _confirmedLng = frozen.longitude;
+    _confirmedLat = frozen.latitude;
+    _tracking = true;
+    _firedAlertPhases.clear();
+    _updateDistanceAndEta();
+
     notifyListeners();
 
     // Re-draw the pin at the confirmed coordinate, locked (no camera move).
@@ -592,6 +639,60 @@ class MapsController extends ChangeNotifier {
     unawaited(_saveHistory());
   }
 
+  /// Selects a past trip as the current destination, pins it, and confirms.
+  void selectTrip(PinnedTrip trip) {
+    final place = PlaceResult(
+      name: trip.name,
+      address: trip.address,
+      longitude: trip.longitude,
+      latitude: trip.latitude,
+      distanceMeters: trip.distanceMeters,
+    );
+
+    _searched = place;
+    _locked = false;
+    _confirmed = false;
+    _resultsVisible = false;
+    _results = const [];
+    notifyListeners();
+
+    _onShowPin?.call(place, animateCamera: true);
+
+    // Auto-confirm after showing the pin.
+    Future.delayed(const Duration(milliseconds: 300), () {
+      confirmPin();
+    });
+  }
+
+  /// Reverses a past trip: the user's old start location becomes the new
+  /// destination. The idea is: if the original trip was A→B, reversing makes
+  /// B (current) → A (destination).
+  void reverseTrip(PinnedTrip trip) {
+    final startLng = trip.startLongitude;
+    final startLat = trip.startLatitude;
+    if (startLng == null || startLat == null) return;
+
+    final place = PlaceResult(
+      name: trip.startLocationName ?? 'Previous location',
+      longitude: startLng,
+      latitude: startLat,
+    );
+
+    _searched = place;
+    _locked = false;
+    _confirmed = false;
+    _resultsVisible = false;
+    _results = const [];
+    notifyListeners();
+
+    _onShowPin?.call(place, animateCamera: true);
+
+    // Auto-confirm after showing the pin.
+    Future.delayed(const Duration(milliseconds: 300), () {
+      confirmPin();
+    });
+  }
+
   void _addToHistory(PlaceResult place) {
     final entry = PinnedTrip(
       name: place.name,
@@ -600,6 +701,8 @@ class MapsController extends ChangeNotifier {
       latitude: place.latitude,
       distanceMeters: place.distanceMeters,
       startLocationName: _currentLocation?.name ?? 'Current location',
+      startLongitude: _currentLocation?.longitude ?? _userLng,
+      startLatitude: _currentLocation?.latitude ?? _userLat,
       pinnedAt: DateTime.now(),
     );
     // De-dupe by name + coordinates so re-confirming the same spot doesn't
@@ -674,6 +777,7 @@ class MapsController extends ChangeNotifier {
     _confirmed = false;
     _resolvingPin = false;
     _selectedText = null;
+    stopTracking();
     searchText.removeListener(_onQueryChanged);
     searchText.clear();
     searchText.addListener(_onQueryChanged);
@@ -719,6 +823,59 @@ class MapsController extends ChangeNotifier {
     _resultsVisible = false;
     searchFocus.unfocus();
     notifyListeners();
+  }
+
+  // ── Proximity tracking ─────────────────────────────────────────────────
+
+  /// Computes the current distance/ETA to the confirmed destination and
+  /// triggers the alarm callback if within an alert zone distance.
+  void _updateDistanceAndEta() {
+    final lng = _userLng;
+    final lat = _userLat;
+    final destLng = _confirmedLng;
+    final destLat = _confirmedLat;
+    if (lng == null || lat == null || destLng == null || destLat == null) return;
+
+    final dist = _haversineMeters(lat, lng, destLat, destLng);
+    _distanceToDestination = dist;
+
+    // Estimate ETA: assume ~5 km/h walking, ~30 km/h driving as rough average.
+    // Since we don't know the mode here, use ~1.4 m/s (~walking pace).
+    final etaSeconds = dist / 1.4;
+    final etaMin = (etaSeconds / 60).round();
+    _etaToDestination = etaMin < 60 ? '$etaMin min' : '${etaMin ~/ 60}h ${etaMin % 60}m';
+
+    notifyListeners();
+
+    // Check alert zone distances (sorted descending: first = farthest).
+    final zones = AppPrefs.alertZoneDistances;
+    for (var i = 0; i < zones.length; i++) {
+      if (dist <= zones[i] && !_firedAlertPhases.contains(i)) {
+        _firedAlertPhases.add(i);
+        // Fire alarm on the closest phase that triggers.
+        onAlarmTriggered?.call();
+        break;
+      }
+    }
+  }
+
+  /// Stops proximity tracking (e.g. after alarm dismissed or user clears pin).
+  void stopTracking() {
+    _tracking = false;
+    _distanceToDestination = null;
+    _etaToDestination = null;
+    _confirmedLng = null;
+    _confirmedLat = null;
+    _firedAlertPhases.clear();
+    notifyListeners();
+  }
+
+  /// Returns a formatted distance string for UI display.
+  String get distanceLabel {
+    final d = _distanceToDestination;
+    if (d == null) return '—';
+    if (d < 1000) return '${d.round()} m';
+    return '${(d / 1000).toStringAsFixed(1)} km';
   }
 
   @override
