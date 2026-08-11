@@ -1,103 +1,77 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../../core/theme/app_colors.dart';
+import '../../maps_tab/pinned_trip.dart';
 
-/// Dummy data model for a past location entry.
-class _PastLocationEntry {
-  const _PastLocationEntry({
-    required this.day,
-    required this.time,
-    required this.routeNumber,
-    required this.locationName,
-    required this.timeOfArrival,
-    required this.distance,
-  });
-
-  final String day;
-  final String time;
-  final String routeNumber;
-  final String locationName;
-  final String timeOfArrival;
-  final String distance;
-}
-
-/// Dummy data for past locations.
-const _dummyLocations = [
-  _PastLocationEntry(
-    day: 'Mon',
-    time: '7:00 PM',
-    routeNumber: '21',
-    locationName: 'Location Name',
-    timeOfArrival: 'Time of Arrival',
-    distance: 'Distance',
-  ),
-  _PastLocationEntry(
-    day: 'Sun',
-    time: '7:00 PM',
-    routeNumber: '21',
-    locationName: 'Location Name',
-    timeOfArrival: 'Time of Arrival',
-    distance: 'Distance',
-  ),
-  _PastLocationEntry(
-    day: 'Thu',
-    time: '7:00 PM',
-    routeNumber: '21',
-    locationName: 'Location Name',
-    timeOfArrival: 'Time of Arrival',
-    distance: 'Distance',
-  ),
-  _PastLocationEntry(
-    day: 'Wed',
-    time: '7:00 PM',
-    routeNumber: '21',
-    locationName: 'Location Name',
-    timeOfArrival: 'Time of Arrival',
-    distance: 'Distance',
-  ),
-  _PastLocationEntry(
-    day: 'Tue',
-    time: '7:00 PM',
-    routeNumber: '21',
-    locationName: 'Location Name',
-    timeOfArrival: 'Time of Arrival',
-    distance: 'Distance',
-  ),
-  _PastLocationEntry(
-    day: 'Sat',
-    time: '7:00 PM',
-    routeNumber: '21',
-    locationName: 'Location Name',
-    timeOfArrival: 'Time of Arrival',
-    distance: 'Distance',
-  ),
-];
-
-/// Past Locations tab content: vertical timeline with location cards.
+/// Past Trips tab content: vertical timeline with location cards seeded from
+/// real [PinnedTrip] data coming from [MapsController.pinnedHistory].
 class PastLocationsTab extends StatelessWidget {
-  const PastLocationsTab({super.key});
+  const PastLocationsTab({super.key, this.trips = const [], this.onTripTap});
+
+  /// Real trip data from MapsController.
+  final List<PinnedTrip> trips;
+
+  /// Called when the user taps a trip card (opens re-pin modal).
+  final ValueChanged<PinnedTrip>? onTripTap;
 
   @override
   Widget build(BuildContext context) {
+    // Only show trips from the past 45 days.
+    final cutoff = DateTime.now().subtract(const Duration(days: 45));
+    final recentTrips = trips.where((t) => t.pinnedAt.isAfter(cutoff)).toList();
+
+    if (recentTrips.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 32),
+          child: Text(
+            'No past trips yet.\nConfirm a location on the map to see it here.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'Inter',
+              color: AppColors.textGrey,
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ),
+      );
+    }
+
     return ListView.builder(
       padding: const EdgeInsets.only(left: 10, right: 0, top: 8, bottom: 100),
-      itemCount: _dummyLocations.length,
+      itemCount: recentTrips.length,
       itemBuilder: (context, index) {
-        final entry = _dummyLocations[index];
-        final isLast = index == _dummyLocations.length - 1;
-        return _PastLocationRow(entry: entry, isLast: isLast);
+        final trip = recentTrips[index];
+        final isFirst = index == 0;
+        final isLast = index == recentTrips.length - 1;
+        return _PastLocationRow(
+          trip: trip,
+          isFirst: isFirst,
+          isLast: isLast,
+          index: index + 1,
+          onTap: onTripTap != null ? () => onTripTap!(trip) : null,
+        );
       },
     );
   }
 }
 
-/// A single row in the past-locations timeline. Uses IntrinsicHeight so the
-/// timeline column stretches to the card height, with the circle centered.
+/// A single row in the past-trips timeline.
 class _PastLocationRow extends StatelessWidget {
-  const _PastLocationRow({required this.entry, required this.isLast});
+  const _PastLocationRow({
+    required this.trip,
+    required this.isFirst,
+    required this.isLast,
+    required this.index,
+    this.onTap,
+  });
 
-  final _PastLocationEntry entry;
+  final PinnedTrip trip;
+  final bool isFirst;
   final bool isLast;
+  final int index;
+  final VoidCallback? onTap;
 
   static const double _circleSize = 44;
 
@@ -116,7 +90,7 @@ class _PastLocationRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    entry.day,
+                    _dayLabel(trip.pinnedAt),
                     style: const TextStyle(
                       fontFamily: 'Poppins',
                       fontSize: 12,
@@ -125,7 +99,7 @@ class _PastLocationRow extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    entry.time,
+                    trip.timeLabel,
                     style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 9,
@@ -143,14 +117,10 @@ class _PastLocationRow extends StatelessWidget {
             width: _circleSize,
             child: Column(
               children: [
-                // Dashed line above circle (connects from previous node)
-                if (true)
-                  Expanded(
-                    child: _DashedVerticalLine(
-                      visible: entry != _dummyLocations.first,
-                    ),
-                  ),
-                // Circle node
+                Expanded(
+                  child: _DashedVerticalLine(visible: !isFirst),
+                ),
+                // Circle node with date number (day of month)
                 Container(
                   width: _circleSize,
                   height: _circleSize,
@@ -161,7 +131,7 @@ class _PastLocationRow extends StatelessWidget {
                   ),
                   alignment: Alignment.center,
                   child: Text(
-                    entry.routeNumber,
+                    '${trip.pinnedAt.day}',
                     style: const TextStyle(
                       fontFamily: 'Poppins',
                       fontSize: 14,
@@ -170,7 +140,6 @@ class _PastLocationRow extends StatelessWidget {
                     ),
                   ),
                 ),
-                // Dashed line below circle (connects to next node)
                 Expanded(
                   child: _DashedVerticalLine(visible: !isLast),
                 ),
@@ -183,12 +152,21 @@ class _PastLocationRow extends StatelessWidget {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 6),
-              child: _LocationCard(entry: entry),
+              child: GestureDetector(
+                onTap: onTap,
+                child: _LocationCard(trip: trip),
+              ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  /// Short day-of-week abbreviation from a DateTime.
+  String _dayLabel(DateTime dt) {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return days[dt.weekday - 1];
   }
 }
 
@@ -231,12 +209,12 @@ class _DashedVerticalPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// Card displaying location name, time of arrival, and distance.
-/// Rounded on the left, flat on the right (clamped to screen edge).
+/// Card displaying location name, time of arrival, and distance from real
+/// [PinnedTrip] data.
 class _LocationCard extends StatelessWidget {
-  const _LocationCard({required this.entry});
+  const _LocationCard({required this.trip});
 
-  final _PastLocationEntry entry;
+  final PinnedTrip trip;
 
   @override
   Widget build(BuildContext context) {
@@ -261,7 +239,9 @@ class _LocationCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            entry.locationName,
+            trip.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontFamily: 'Poppins',
               fontSize: 13,
@@ -272,10 +252,10 @@ class _LocationCard extends StatelessWidget {
           const SizedBox(height: 4),
           Row(
             children: [
-              Icon(Icons.access_time_rounded, size: 12, color: AppColors.primary),
+              const Icon(Icons.access_time_rounded, size: 12, color: AppColors.primary),
               const SizedBox(width: 4),
               Text(
-                entry.timeOfArrival,
+                trip.timeLabel,
                 style: const TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 10,
@@ -288,10 +268,10 @@ class _LocationCard extends StatelessWidget {
           const SizedBox(height: 3),
           Row(
             children: [
-              Icon(Icons.location_on_rounded, size: 12, color: AppColors.primary),
+              const Icon(Icons.location_on_rounded, size: 12, color: AppColors.primary),
               const SizedBox(width: 4),
               Text(
-                entry.distance,
+                trip.distanceLabel,
                 style: const TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 10,

@@ -1,10 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 import '../../../core/animations/tabs_transitions.dart';
+import '../../../core/global_services/claude_services.dart';
 import '../../../core/global_services/wake_service.dart';
 import '../../../core/navbar/navbar_widget.dart';
 import '../../../core/overlay/overlay_service.dart';
@@ -13,8 +16,11 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/search_bar.dart';
 import '../alarm_dismissal_screen.dart';
 import 'tabs/history_tab/history_tab.dart';
+import 'tabs/history_tab/past_routes/route_history_service.dart';
+import 'tabs/history_tab/past_routes/saved_route.dart';
 import 'tabs/maps_tab/maps_controller.dart';
 import 'tabs/maps_tab/maps_tab.dart';
+import 'tabs/maps_tab/pinned_trip.dart';
 import 'tabs/maps_tab/place_result.dart';
 import 'tabs/maps_tab/search_results_dropdown.dart';
 import 'tabs/settings_tab/profile_tab.dart';
@@ -65,6 +71,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     // Safety net: reveal the UI even if the map never reports ready (e.g. no
     // network / stuck tiles) so the app is never stuck on the skeleton.
     _readyTimeout = Timer(const Duration(seconds: 8), _handleMapReady);
+    _loadRouteHistory();
+  }
+
+  // ── Route history for Past Routes tab ──────────────────────────────────
+  List<SavedRoute> _routeHistory = const [];
+
+  Future<void> _loadRouteHistory() async {
+    await RouteHistoryService.instance.load();
+    if (mounted) {
+      setState(() {
+        _routeHistory = RouteHistoryService.instance.routes;
+      });
+    }
   }
 
   @override
@@ -126,6 +145,34 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           },
         ),
       ),
+    );
+  }
+
+  // ── History tab: re-pin trip ───────────────────────────────────────────
+
+  void _onHistoryTripTap(PinnedTrip trip) {
+    showDialog(
+      context: context,
+      builder: (ctx) => _RepinLocationDialog(
+        trip: trip,
+        onConfirm: () {
+          Navigator.of(ctx).pop();
+          // Switch to the Maps tab.
+          setState(() => _tabIndex = 0);
+          // Auto-search, pin, and confirm the location.
+          _mapsController.selectTrip(trip);
+        },
+      ),
+    );
+  }
+
+  // ── History tab: transit route modal ───────────────────────────────────
+
+  void _onHistoryRouteTap(SavedRoute route) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) => _TransitRouteModal(route: route),
     );
   }
 
@@ -432,7 +479,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final tabs = <Widget>[
       MapsTab(onMapReady: _handleMapReady, controller: _mapsController),
       RoutesTab(mode: _routeMode, active: isRoutesTab, wayFinderKey: _wayFinderKey),
-      const HistoryTab(),
+      AnimatedBuilder(
+        animation: _mapsController,
+        builder: (context, _) => HistoryTab(
+          trips: _mapsController.pinnedHistory,
+          onTripTap: _onHistoryTripTap,
+          routes: _routeHistory,
+          onRouteTap: _onHistoryRouteTap,
+        ),
+      ),
       const ProfileTab(),
     ];
 
@@ -562,7 +617,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     duration: _revealDuration,
                     child: NavBar(
                       currentIndex: _tabIndex,
-                      onTap: (index) => setState(() => _tabIndex = index),
+                      onTap: (index) {
+                        setState(() => _tabIndex = index);
+                        // Reload route history when switching to History tab.
+                        if (index == 2) _loadRouteHistory();
+                      },
                     ),
                   ),
                 ),
@@ -817,6 +876,624 @@ class _TranscriptionCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+
+/// Dialog shown when tapping a trip card on the History tab.
+/// Shows the trip name, estimated time, distance, and a pin icon.
+/// Cancel (dark gray) dismisses; Confirm switches to maps tab and re-pins.
+class _RepinLocationDialog extends StatelessWidget {
+  const _RepinLocationDialog({required this.trip, required this.onConfirm});
+
+  final PinnedTrip trip;
+  final VoidCallback onConfirm;
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: AppColors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 40),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Title
+            const Center(
+              child: Text(
+                'Re-pin Location?',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textDark,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Location name + pin icon row
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        trip.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      // Estimated time
+                      Row(
+                        children: [
+                          const Icon(Icons.access_time_rounded,
+                              size: 16, color: AppColors.textGrey),
+                          const SizedBox(width: 6),
+                          Text(
+                            trip.timeLabel,
+                            style: const TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.textDark,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      // Distance
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on_rounded,
+                              size: 16, color: AppColors.textGrey),
+                          const SizedBox(width: 6),
+                          Text(
+                            trip.distanceLabel,
+                            style: const TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.textDark,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Pin icon
+                const Icon(
+                  Icons.location_on,
+                  color: AppColors.primary,
+                  size: 48,
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // Action buttons
+            Row(
+              children: [
+                // Cancel button
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppColors.border),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF4A4A4A), // slight dark gray
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Confirm button
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: onConfirm,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.white,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      'Confirm',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+/// Full-screen modal showing past route details with View Route / View Map toggle.
+/// Tapping outside the modal (barrier) dismisses it.
+class _TransitRouteModal extends StatefulWidget {
+  const _TransitRouteModal({required this.route});
+
+  final SavedRoute route;
+
+  @override
+  State<_TransitRouteModal> createState() => _TransitRouteModalState();
+}
+
+class _TransitRouteModalState extends State<_TransitRouteModal> {
+  bool _showMap = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: AppColors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * 0.75,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── Header ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              child: Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD4F5E0),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Center(
+                  child: Text(
+                    'Transit Route',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textDark,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // ── View Route / View Map toggle ──
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: _RouteMapToggle(
+                showMap: _showMap,
+                onChanged: (val) => setState(() => _showMap = val),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // ── Content ──
+            Flexible(
+              child: _showMap
+                  ? _StaticMapView(route: widget.route)
+                  : _RouteStepsView(route: widget.route),
+            ),
+
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Pill toggle: View Route / View Map.
+class _RouteMapToggle extends StatelessWidget {
+  const _RouteMapToggle({required this.showMap, required this.onChanged});
+
+  final bool showMap;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 40,
+      decoration: BoxDecoration(
+        color: const Color(0xFFD4F5E0),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => onChanged(false),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: !showMap ? AppColors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: !showMap
+                      ? const [
+                          BoxShadow(
+                            color: Color(0x1F000000),
+                            blurRadius: 4,
+                            offset: Offset(0, 1),
+                          ),
+                        ]
+                      : null,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  'View Route',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: !showMap ? AppColors.textDark : AppColors.primary,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => onChanged(true),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: showMap ? AppColors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: showMap
+                      ? const [
+                          BoxShadow(
+                            color: Color(0x1F000000),
+                            blurRadius: 4,
+                            offset: Offset(0, 1),
+                          ),
+                        ]
+                      : null,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  'View Map',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: showMap ? AppColors.textDark : AppColors.primary,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Scrollable step-by-step route instructions matching the RouteNodesWidget style.
+class _RouteStepsView extends StatelessWidget {
+  const _RouteStepsView({required this.route});
+
+  final SavedRoute route;
+
+  @override
+  Widget build(BuildContext context) {
+    final steps = route.steps;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var i = 0; i < steps.length; i++) ...[
+            _StepNode(
+              step: steps[i],
+              isLast: i == steps.length - 1,
+            ),
+          ],
+          const SizedBox(height: 12),
+          // Destination badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.location_on, size: 16, color: AppColors.primary),
+                SizedBox(width: 4),
+                Text(
+                  'Destination',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Source
+          Center(
+            child: Text(
+              '${route.originTruncated} → ${route.destinationTruncated}',
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 11,
+                color: AppColors.hintGrey,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A single step node in the modal's route view.
+class _StepNode extends StatelessWidget {
+  const _StepNode({required this.step, required this.isLast});
+
+  final RouteStep step;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: isLast ? 0 : 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Timeline: circle + dashed connector
+          Column(
+            children: [
+              Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: step.isDestination ? AppColors.primary : AppColors.white,
+                  border: Border.all(
+                    color: AppColors.primary,
+                    width: step.isDestination ? 0 : 2.5,
+                  ),
+                ),
+              ),
+              if (!isLast)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Column(
+                    children: List.generate(4, (i) {
+                      return Column(
+                        children: [
+                          Container(
+                            width: 2.5,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              borderRadius: BorderRadius.circular(1),
+                            ),
+                          ),
+                          if (i < 3) const SizedBox(height: 3),
+                        ],
+                      );
+                    }),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(width: 10),
+          // Content
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  step.title,
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    height: 1.3,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '~${step.eta} ${step.distance}',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 12,
+                    color: AppColors.textDark.withValues(alpha: 0.6),
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  step.description,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 12,
+                    height: 1.4,
+                    color: AppColors.textDark,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Interactive Mapbox map showing the route path. Users can zoom, pan, and
+/// drag across the area. Camera auto-fits to cover the entire route on load.
+class _StaticMapView extends StatefulWidget {
+  const _StaticMapView({required this.route});
+
+  final SavedRoute route;
+
+  @override
+  State<_StaticMapView> createState() => _StaticMapViewState();
+}
+
+class _StaticMapViewState extends State<_StaticMapView> {
+  mapbox.MapboxMap? _map;
+
+  static const String _routeSourceId = 'modal-route-source';
+  static const String _routeLayerId = 'modal-route-layer';
+
+  void _onMapCreated(mapbox.MapboxMap map) {
+    _map = map;
+    map.compass.updateSettings(mapbox.CompassSettings(enabled: false));
+    map.scaleBar.updateSettings(mapbox.ScaleBarSettings(enabled: false));
+  }
+
+  void _onStyleLoaded(mapbox.StyleLoadedEventData _) async {
+    await _addRouteLine();
+    await _fitCameraToBounds();
+  }
+
+  Future<void> _addRouteLine() async {
+    final map = _map;
+    if (map == null || widget.route.geometry.isEmpty) return;
+
+    final geojson = jsonEncode({
+      'type': 'Feature',
+      'geometry': {
+        'type': 'LineString',
+        'coordinates': widget.route.geometry,
+      },
+      'properties': {},
+    });
+
+    await map.style.addSource(
+      mapbox.GeoJsonSource(id: _routeSourceId, data: geojson),
+    );
+
+    await map.style.addLayer(
+      mapbox.LineLayer(
+        id: _routeLayerId,
+        sourceId: _routeSourceId,
+        lineColor: AppColors.primary.value,
+        lineWidth: 5.0,
+        lineJoin: mapbox.LineJoin.ROUND,
+        lineCap: mapbox.LineCap.ROUND,
+      ),
+    );
+  }
+
+  Future<void> _fitCameraToBounds() async {
+    final map = _map;
+    if (map == null) return;
+
+    final route = widget.route;
+    final minLng =
+        route.originLng < route.destLng ? route.originLng : route.destLng;
+    final maxLng =
+        route.originLng > route.destLng ? route.originLng : route.destLng;
+    final minLat =
+        route.originLat < route.destLat ? route.originLat : route.destLat;
+    final maxLat =
+        route.originLat > route.destLat ? route.originLat : route.destLat;
+
+    final bounds = mapbox.CoordinateBounds(
+      southwest:
+          mapbox.Point(coordinates: mapbox.Position(minLng, minLat)),
+      northeast:
+          mapbox.Point(coordinates: mapbox.Position(maxLng, maxLat)),
+      infiniteBounds: false,
+    );
+
+    final camera = await map.cameraForCoordinateBounds(
+      bounds,
+      mapbox.MbxEdgeInsets(top: 60, left: 40, bottom: 60, right: 40),
+      null,
+      null,
+      null,
+      null,
+    );
+
+    await map.flyTo(
+      camera,
+      mapbox.MapAnimationOptions(duration: 600, startDelay: 100),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.route.geometry.isEmpty) {
+      return const Center(
+        child: Text(
+          'Map unavailable',
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 13,
+            color: AppColors.textGrey,
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: AppColors.primary, width: 2),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: SizedBox(
+              height: 280,
+              child: mapbox.MapWidget(
+                key: const ValueKey('transit-route-modal-map'),
+                styleUri: mapbox.MapboxStyles.STANDARD,
+                onMapCreated: _onMapCreated,
+                onStyleLoadedListener: _onStyleLoaded,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

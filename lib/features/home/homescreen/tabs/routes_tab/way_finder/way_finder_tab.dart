@@ -6,6 +6,8 @@ import '../../../../../../core/global_services/claude_services.dart';
 import '../../../../../../core/skeleton_loading/skeleton_loading.dart';
 import '../../../../../../core/theme/app_colors.dart';
 import '../../../../../../core/widgets/asset_icon.dart';
+import '../../history_tab/past_routes/route_history_service.dart';
+import '../../history_tab/past_routes/saved_route.dart';
 import '../../maps_tab/place_result.dart';
 import 'eta_distance_cards.dart';
 import 'finder_desc.dart';
@@ -102,6 +104,8 @@ class WayFinderTabState extends State<WayFinderTab> {
           _routeResult = result;
           _routeLoading = false;
         });
+        // Save to route history for the Past Routes tab.
+        _saveToHistory(result);
       }
     } catch (e) {
       if (mounted) {
@@ -111,6 +115,30 @@ class WayFinderTabState extends State<WayFinderTab> {
         });
       }
     }
+  }
+
+  void _saveToHistory(RouteResult result) {
+    if (_origin == null || _destination == null) return;
+    final modeStr = switch (_travelMode) {
+      TravelMode.drive => 'drive',
+      TravelMode.transit => 'transit',
+      TravelMode.walk => 'walk',
+    };
+    final saved = SavedRoute(
+      originName: _origin!.name,
+      destinationName: _destination!.name,
+      originLat: _origin!.latitude,
+      originLng: _origin!.longitude,
+      destLat: _destination!.latitude,
+      destLng: _destination!.longitude,
+      totalEta: result.totalEta,
+      totalDistance: result.totalDistance,
+      travelMode: modeStr,
+      steps: result.steps,
+      geometry: result.geometry,
+      searchedAt: DateTime.now(),
+    );
+    RouteHistoryService.instance.addRoute(saved);
   }
 
   void _openPathScreen() {

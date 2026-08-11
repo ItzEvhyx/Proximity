@@ -369,12 +369,12 @@ class _DraggableInfoCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 14),
-                    // Header row: "Past trips" on the left, bus icon on the right.
+                    // Header row: "Recent Trips" on the left, bus icon on the right.
                     Row(
                       children: [
                         const Expanded(
                           child: Text(
-                            'Past trips',
+                            'Recent Trips',
                             style: TextStyle(
                               fontFamily: 'Poppins',
                               color: AppColors.textDark,

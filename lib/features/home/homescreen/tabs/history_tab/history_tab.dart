@@ -1,16 +1,36 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../core/theme/app_colors.dart';
+import '../maps_tab/pinned_trip.dart';
 import 'past_locations/past_locations.dart';
 import 'past_routes/past_routes_tab.dart';
+import 'past_routes/saved_route.dart';
 
 /// Which sub-tab the history view is showing.
 enum HistoryMode { locations, routes }
 
-/// History tab with "Transit History" header, Past Locations / Past Routes
+/// History tab with "Transit History" header, Past Trips / Past Routes
 /// toggle, and timeline-based content.
 class HistoryTab extends StatefulWidget {
-  const HistoryTab({super.key});
+  const HistoryTab({
+    super.key,
+    this.trips = const [],
+    this.onTripTap,
+    this.routes = const [],
+    this.onRouteTap,
+  });
+
+  /// Real trip history from MapsController.
+  final List<PinnedTrip> trips;
+
+  /// Called when the user taps a trip card (opens re-pin modal).
+  final ValueChanged<PinnedTrip>? onTripTap;
+
+  /// Real route history from RouteHistoryService.
+  final List<SavedRoute> routes;
+
+  /// Called when the user taps a route card (opens Transit Route modal).
+  final ValueChanged<SavedRoute>? onRouteTap;
 
   @override
   State<HistoryTab> createState() => _HistoryTabState();
@@ -51,8 +71,14 @@ class _HistoryTabState extends State<HistoryTab> {
           // ── Timeline content (instant switch, no delay) ──
           Expanded(
             child: _mode == HistoryMode.locations
-                ? const PastLocationsTab()
-                : const PastRoutesTab(),
+                ? PastLocationsTab(
+                    trips: widget.trips,
+                    onTripTap: widget.onTripTap,
+                  )
+                : PastRoutesTab(
+                    routes: widget.routes,
+                    onRouteTap: widget.onRouteTap,
+                  ),
           ),
         ],
       ),
@@ -109,7 +135,7 @@ class _HistoryModeToggle extends StatelessWidget {
   final ValueChanged<HistoryMode> onChanged;
 
   static const List<_ToggleItem> _items = [
-    _ToggleItem('Past Locations', HistoryMode.locations),
+    _ToggleItem('Past Trips', HistoryMode.locations),
     _ToggleItem('Past Routes', HistoryMode.routes),
   ];
 
