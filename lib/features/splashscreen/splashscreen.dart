@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
@@ -13,8 +15,9 @@ import '../../core/theme/app_colors.dart';
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key, required this.controller, this.onFinished});
 
-  /// An already-initialized video controller for the splash video.
-  final VideoPlayerController controller;
+  /// An already-initialized controller for the splash video. A null value
+  /// displays a short black fallback when a device cannot decode the video.
+  final VideoPlayerController? controller;
 
   /// Called once the splash video has finished playing.
   final VoidCallback? onFinished;
@@ -25,47 +28,81 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen> {
   bool _finished = false;
+  Timer? _fallbackTimer;
 
   @override
   void initState() {
     super.initState();
-    widget.controller
-      ..addListener(_checkForCompletion)
-      ..play();
+    final controller = widget.controller;
+    if (controller == null) {
+      _fallbackTimer = Timer(const Duration(milliseconds: 900), _finish);
+      return;
+    }
+
+    controller.addListener(_checkForCompletion);
+    unawaited(controller.play());
+
+    // A broken media callback must not be able to hold the user on the splash
+    // forever. The normal completion listener still transitions sooner.
+    final duration = controller.value.duration;
+    _fallbackTimer = Timer(
+      duration > Duration.zero
+          ? duration + const Duration(seconds: 2)
+          : const Duration(seconds: 8),
+      _finish,
+    );
   }
 
   void _checkForCompletion() {
-    final value = widget.controller.value;
+    final controller = widget.controller;
+    if (controller == null) return;
+    final value = controller.value;
     if (!_finished &&
         value.isInitialized &&
         value.position >= value.duration &&
         !value.isPlaying) {
-      _finished = true;
-      widget.onFinished?.call();
+      _finish();
     }
+  }
+
+  void _finish() {
+    if (_finished || !mounted) return;
+    _finished = true;
+    _fallbackTimer?.cancel();
+    widget.onFinished?.call();
   }
 
   @override
   void dispose() {
-    widget.controller.removeListener(_checkForCompletion);
-    widget.controller.dispose();
+    _fallbackTimer?.cancel();
+    widget.controller?.removeListener(_checkForCompletion);
+    widget.controller?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final controller = widget.controller;
     return Scaffold(
-      backgroundColor: AppColors.primary,
+      backgroundColor: AppColors.bg,
       body: SizedBox.expand(
-        child: FittedBox(
-          fit: BoxFit.cover,
-          clipBehavior: Clip.hardEdge,
-          child: SizedBox(
-            width: widget.controller.value.size.width,
-            height: widget.controller.value.size.height,
-            child: VideoPlayer(widget.controller),
-          ),
-        ),
+        child: controller == null
+            ? const Center(
+                child: SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              )
+            : FittedBox(
+                fit: BoxFit.cover,
+                clipBehavior: Clip.hardEdge,
+                child: SizedBox(
+                  width: controller.value.size.width,
+                  height: controller.value.size.height,
+                  child: VideoPlayer(controller),
+                ),
+              ),
       ),
     );
   }

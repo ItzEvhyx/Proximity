@@ -36,7 +36,8 @@ class AppPrefs {
   // ── Onboarding ─────────────────────────────────────────────────────────────
   /// True once the user has seen the one-time contribution/welcome flow. New
   /// installs start false, so only a brand-new user is shown that screen.
-  static bool get hasCompletedOnboarding => _prefs.getBool(_kOnboarded) ?? false;
+  static bool get hasCompletedOnboarding =>
+      _prefs.getBool(_kOnboarded) ?? false;
 
   static Future<void> setOnboardingComplete() =>
       _prefs.setBool(_kOnboarded, true);
@@ -55,7 +56,8 @@ class AppPrefs {
   static const String _kAlarmSound = 'selected_alarm_sound';
 
   /// The asset key of the selected alarm sound (e.g. 'default_alarm').
-  static String get alarmSound => _prefs.getString(_kAlarmSound) ?? 'default_alarm';
+  static String get alarmSound =>
+      _prefs.getString(_kAlarmSound) ?? 'default_alarm';
 
   static Future<void> setAlarmSound(String key) async {
     await _prefs.setString(_kAlarmSound, key);

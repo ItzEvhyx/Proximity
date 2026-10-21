@@ -1,5 +1,5 @@
 import '../shared_prefs/shared_prefs.dart';
-import '../supabase/supabase_client.dart';
+import '../firebase/firebase_client.dart';
 
 /// Owns the logged-in user's identity for the app.
 ///
@@ -17,22 +17,22 @@ class UserSession {
 
   bool get isLoggedIn => userId != null;
 
-  /// Reconciles local state with any Supabase session restored at start-up.
-  /// If Supabase already has a session (e.g. from a previous run) but we have
+  /// Reconciles local state with any Firebase session restored at start-up.
+  /// If Firebase already has a session (e.g. from a previous run) but we have
   /// no stored id yet, adopt it so routing treats the user as logged in.
   Future<void> restore() async {
-    final supaUser = supabase.auth.currentUser;
-    if (supaUser != null && AppPrefs.loggedInUserId == null) {
-      await AppPrefs.setLoggedInUserId(supaUser.id);
+    final user = firebaseAuth.currentUser;
+    if (user != null && AppPrefs.loggedInUserId == null) {
+      await AppPrefs.setLoggedInUserId(user.uid);
     }
   }
 
   /// Records a successful login. Call with the authenticated user's id.
   Future<void> onLogin(String userId) => AppPrefs.setLoggedInUserId(userId);
 
-  /// Signs the user out of Supabase and clears the local session id.
+  /// Signs the user out of Firebase and clears the local session id.
   Future<void> onLogout() async {
-    await supabase.auth.signOut();
+    await firebaseAuth.signOut();
     await AppPrefs.clearLoggedInUserId();
   }
 }

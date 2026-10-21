@@ -65,6 +65,11 @@ class OverlayService {
 
     // Re-check permission in case it was granted after our last check.
     _permissionGranted = await FlutterOverlayWindow.isPermissionGranted();
+    if (!_permissionGranted) {
+      // The overlay is requested only when the user starts navigation, rather
+      // than during app launch. Android can open a Settings activity here.
+      _permissionGranted = await requestPermission();
+    }
     if (!_permissionGranted) return;
 
     // Already showing — just send fresh data.
@@ -100,10 +105,7 @@ class OverlayService {
   }
 
   /// Updates the overlay with new ETA and distance values.
-  Future<String> update({
-    required String eta,
-    required String distance,
-  }) async {
+  Future<String> update({required String eta, required String distance}) async {
     _lastEta = eta;
     _lastDistance = distance;
 

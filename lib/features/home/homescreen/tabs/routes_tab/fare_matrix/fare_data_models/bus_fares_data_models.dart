@@ -18,7 +18,7 @@
 
 import 'package:flutter/material.dart';
 
-import '../../../../../../../core/widgets/asset_icon.dart';
+import '../../../../../../../core/theme/app_colors.dart';
 
 /// Bus subtypes with different fare structures.
 enum BusType {
@@ -32,32 +32,32 @@ enum BusType {
 
 extension BusTypeDisplay on BusType {
   String get label => switch (this) {
-        BusType.cityOrdinary => 'City Bus (Ordinary)',
-        BusType.cityAircon => 'City Bus (Aircon)',
-        BusType.provincialOrdinary => 'Provincial (Ordinary)',
-        BusType.provincialSuperDeluxe => 'Provincial (Super Deluxe)',
-        BusType.provincialDeluxe => 'Provincial (Deluxe)',
-        BusType.provincialLuxury => 'Provincial (Luxury)',
-      };
+    BusType.cityOrdinary => 'City Bus (Ordinary)',
+    BusType.cityAircon => 'City Bus (Aircon)',
+    BusType.provincialOrdinary => 'Provincial (Ordinary)',
+    BusType.provincialSuperDeluxe => 'Provincial (Super Deluxe)',
+    BusType.provincialDeluxe => 'Provincial (Deluxe)',
+    BusType.provincialLuxury => 'Provincial (Luxury)',
+  };
 
   String get shortLabel => switch (this) {
-        BusType.cityOrdinary => 'Ordinary',
-        BusType.cityAircon => 'Aircon',
-        BusType.provincialOrdinary => 'Prov. Ordinary',
-        BusType.provincialSuperDeluxe => 'Super Deluxe',
-        BusType.provincialDeluxe => 'Deluxe',
-        BusType.provincialLuxury => 'Luxury',
-      };
+    BusType.cityOrdinary => 'Ordinary',
+    BusType.cityAircon => 'Aircon',
+    BusType.provincialOrdinary => 'Prov. Ordinary',
+    BusType.provincialSuperDeluxe => 'Super Deluxe',
+    BusType.provincialDeluxe => 'Deluxe',
+    BusType.provincialLuxury => 'Luxury',
+  };
 
   /// Chip label shown in the payment indicator selector.
   String get chipLabel => switch (this) {
-        BusType.cityOrdinary => 'City · Ordinary',
-        BusType.cityAircon => 'City · Aircon',
-        BusType.provincialOrdinary => 'Provincial · Ordinary',
-        BusType.provincialSuperDeluxe => 'Provincial · Super Deluxe',
-        BusType.provincialDeluxe => 'Provincial · Deluxe',
-        BusType.provincialLuxury => 'Provincial · Luxury',
-      };
+    BusType.cityOrdinary => 'City · Ordinary',
+    BusType.cityAircon => 'City · Aircon',
+    BusType.provincialOrdinary => 'Provincial · Ordinary',
+    BusType.provincialSuperDeluxe => 'Provincial · Super Deluxe',
+    BusType.provincialDeluxe => 'Provincial · Deluxe',
+    BusType.provincialLuxury => 'Provincial · Luxury',
+  };
 }
 
 /// Fare configuration for a bus type.
@@ -139,25 +139,21 @@ class BusFareData {
 
   // ── Provincial Bus — Deluxe (aircon) ───────────────────────────────────
   // Flat rate: ₱2.60 per km (no separate base fare)
-  static const provincialDeluxe = BusFareConfig(
-    flatPerKmRate: 2.60,
-  );
+  static const provincialDeluxe = BusFareConfig(flatPerKmRate: 2.60);
 
   // ── Provincial Bus — Luxury ────────────────────────────────────────────
   // Flat rate: ₱3.35 per km (no separate base fare)
-  static const provincialLuxury = BusFareConfig(
-    flatPerKmRate: 3.35,
-  );
+  static const provincialLuxury = BusFareConfig(flatPerKmRate: 3.35);
 
   /// Returns the fare config for a given bus type.
   static BusFareConfig configFor(BusType type) => switch (type) {
-        BusType.cityOrdinary => cityOrdinary,
-        BusType.cityAircon => cityAircon,
-        BusType.provincialOrdinary => provincialOrdinary,
-        BusType.provincialSuperDeluxe => provincialSuperDeluxe,
-        BusType.provincialDeluxe => provincialDeluxe,
-        BusType.provincialLuxury => provincialLuxury,
-      };
+    BusType.cityOrdinary => cityOrdinary,
+    BusType.cityAircon => cityAircon,
+    BusType.provincialOrdinary => provincialOrdinary,
+    BusType.provincialSuperDeluxe => provincialSuperDeluxe,
+    BusType.provincialDeluxe => provincialDeluxe,
+    BusType.provincialLuxury => provincialLuxury,
+  };
 
   /// "How It Works" bullet points for Bus transit.
   static const List<HowItWorksPoint> howItWorks = [
@@ -217,14 +213,10 @@ class HowItWorksPoint {
 
 /// Returns the [Widget] for a [HowItWorksIcon].
 Widget howItWorksIconWidget(HowItWorksIcon icon, {double size = 22}) {
-  const color = Color(0xFF019D43); // AppColors.primary
+  const color = AppColors.textPrimary;
   switch (icon) {
     case HowItWorksIcon.money:
-      return AssetIcon(
-        'public/assets/icons/money_icon.png',
-        size: size,
-        color: color,
-      );
+      return Icon(Icons.payments_outlined, size: size, color: color);
     case HowItWorksIcon.plus:
       return Icon(Icons.add_rounded, size: size, color: color);
     case HowItWorksIcon.diamond:

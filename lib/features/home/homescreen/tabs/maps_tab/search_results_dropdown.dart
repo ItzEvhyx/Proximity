@@ -32,7 +32,7 @@ class SearchResultsDropdown extends StatelessWidget {
       margin: const EdgeInsets.only(top: 8),
       constraints: const BoxConstraints(maxHeight: 340),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(20),
         boxShadow: const [
           BoxShadow(
@@ -108,10 +108,7 @@ class SearchResultsDropdown extends StatelessWidget {
 /// Header bar shown above the results, carrying the section label and a
 /// "Hide" button that dismisses the entire dropdown.
 class _HeaderBar extends StatelessWidget {
-  const _HeaderBar({
-    required this.label,
-    this.onHide,
-  });
+  const _HeaderBar({required this.label, this.onHide});
 
   final String label;
   final VoidCallback? onHide;
@@ -127,7 +124,7 @@ class _HeaderBar extends StatelessWidget {
               label.toUpperCase(),
               style: const TextStyle(
                 fontFamily: 'Inter',
-                color: AppColors.textGrey,
+                color: AppColors.textSecondary,
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.6,
@@ -141,7 +138,7 @@ class _HeaderBar extends StatelessWidget {
               children: [
                 const Icon(
                   Icons.keyboard_arrow_up_rounded,
-                  color: AppColors.primary,
+                  color: AppColors.textPrimary,
                   size: 24,
                 ),
                 const SizedBox(width: 4),
@@ -149,7 +146,7 @@ class _HeaderBar extends StatelessWidget {
                   'Hide',
                   style: TextStyle(
                     fontFamily: 'Inter',
-                    color: AppColors.primary,
+                    color: AppColors.textPrimary,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -183,10 +180,14 @@ class _ResultRow extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.12),
+                color: AppColors.surfaceHigh,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(place.categoryIcon, color: AppColors.primary, size: 22),
+              child: Icon(
+                place.categoryIcon,
+                color: AppColors.textPrimary,
+                size: 22,
+              ),
             ),
             const SizedBox(width: 14),
             Expanded(

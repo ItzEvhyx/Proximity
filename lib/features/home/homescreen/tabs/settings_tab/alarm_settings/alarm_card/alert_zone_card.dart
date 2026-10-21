@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../../../../core/shared_prefs/shared_prefs.dart';
-import '../../../../../../../core/supabase/supabase_client.dart';
+import '../../../../../../../core/firebase/firebase_client.dart';
 import '../../../../../../../core/theme/app_colors.dart';
 
 /// Shows the alert zone distance picker as a bottom sheet modal.
@@ -154,13 +154,11 @@ class _AlertZonePickerSheetState extends State<_AlertZonePickerSheet>
   }
 
   Future<void> _saveToDatabase(List<int> distances) async {
-    final userId = supabase.auth.currentUser?.id;
-    if (userId == null) return;
     try {
-      await supabase.from('profiles').update({
+      await updateCurrentProfile({
         'alert_zone_distances': distances,
         'alert_zone_unit': _isMeters ? 'meters' : 'km',
-      }).eq('id', userId);
+      });
     } catch (_) {}
   }
 
@@ -191,8 +189,9 @@ class _AlertZonePickerSheetState extends State<_AlertZonePickerSheet>
         final currentMeters = _parseToMeters(_controllers[i].text);
         if (currentMeters > 0) {
           _isMeters = meters;
-          final displayValue =
-              meters ? currentMeters.toDouble() : currentMeters / 1000;
+          final displayValue = meters
+              ? currentMeters.toDouble()
+              : currentMeters / 1000;
           _controllers[i].text = _formatValue(displayValue);
         }
       }
@@ -217,10 +216,11 @@ class _AlertZonePickerSheetState extends State<_AlertZonePickerSheet>
       ),
       child: Padding(
         padding: EdgeInsets.fromLTRB(
-            24,
-            0,
-            24,
-            MediaQuery.viewInsetsOf(context).bottom + bottomPadding + 24),
+          24,
+          0,
+          24,
+          MediaQuery.viewInsetsOf(context).bottom + bottomPadding + 24,
+        ),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -259,10 +259,7 @@ class _AlertZonePickerSheetState extends State<_AlertZonePickerSheet>
               ),
               const SizedBox(height: 18),
               // Meters / Kilometers toggle
-              _UnitToggle(
-                isMeters: _isMeters,
-                onChanged: _toggleUnit,
-              ),
+              _UnitToggle(isMeters: _isMeters, onChanged: _toggleUnit),
               const SizedBox(height: 20),
               // Phase inputs with shake animation
               AnimatedBuilder(
@@ -374,11 +371,15 @@ class _UnitToggle extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-              child:
-                  _toggleOption('Meters', isMeters, () => onChanged(true))),
+            child: _toggleOption('Meters', isMeters, () => onChanged(true)),
+          ),
           Expanded(
-              child: _toggleOption(
-                  'Kilometers', !isMeters, () => onChanged(false))),
+            child: _toggleOption(
+              'Kilometers',
+              !isMeters,
+              () => onChanged(false),
+            ),
+          ),
         ],
       ),
     );
@@ -475,8 +476,9 @@ class _PhaseInput extends StatelessWidget {
                 ),
                 child: TextField(
                   controller: controller,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
                   ],
@@ -494,7 +496,9 @@ class _PhaseInput extends StatelessWidget {
                       color: AppColors.textGrey.withValues(alpha: 0.5),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 14),
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                     border: InputBorder.none,
                   ),
                 ),
@@ -503,8 +507,7 @@ class _PhaseInput extends StatelessWidget {
             const SizedBox(width: 10),
             // Unit badge
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               decoration: BoxDecoration(
                 color: AppColors.primary,
                 borderRadius: BorderRadius.circular(14),
@@ -526,8 +529,11 @@ class _PhaseInput extends StatelessWidget {
           const SizedBox(height: 6),
           Row(
             children: [
-              const Icon(Icons.error_outline_rounded,
-                  size: 14, color: AppColors.error),
+              const Icon(
+                Icons.error_outline_rounded,
+                size: 14,
+                color: AppColors.error,
+              ),
               const SizedBox(width: 4),
               Expanded(
                 child: Text(

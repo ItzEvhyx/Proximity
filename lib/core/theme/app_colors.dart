@@ -1,45 +1,53 @@
 import 'package:flutter/material.dart';
 
-/// Central color palette. Change a value here to update it across the app.
+/// The single, grayscale-only palette used by Proximity.
+///
+/// Semantic aliases at the bottom let existing presentation widgets migrate
+/// without ever reintroducing a coloured value.
 class AppColors {
   const AppColors._();
 
-  // ── Brand greens ──────────────────────────────────────────────────────
-  /// Dominant brand green (#019D43) used across all green surfaces.
-  static const Color primary = Color(0xFF019D43);
+  static const Color bg = Color(0xFF101010);
+  static const Color surface = Color(0xFF1A1A1A);
+  static const Color surfaceRaised = Color(0xFF2C2C2C);
+  static const Color surfaceHigh = Color(0xFF3A3A3A);
 
-  /// Darker green for the subtle fade at the top of green screens.
-  static const Color greenDark = Color(0xFF009232);
+  static const Color textPrimary = Color(0xFFFFFFFF);
+  static const Color textSecondary = Color(0xFFB3B3B3);
+  static const Color textMuted = Color(0xFF7A7A7A);
+  static const Color onLight = Color(0xFF101010);
+  static const Color mapLand = Color(0xFF5A5A5A);
+  static const Color mapWater = Color(0xFF3A3A3A);
+  static const Color mapRoad = Color(0xFF8A8A8A);
 
-  /// Vertical background gradient for green screens; the darker green is
-  /// confined to the top ~18% so the rest reads as solid [primary].
-  static const LinearGradient greenBackground = LinearGradient(
+  static const Color border = Color(0x14FFFFFF);
+  static const Color divider = Color(0x0FFFFFFF);
+  static const Color scrim = Color(0xA6000000);
+
+  static const LinearGradient primaryGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [surfaceHigh, surfaceRaised],
+  );
+  static const LinearGradient surfaceGradient = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
-    colors: [greenDark, primary],
-    stops: [0.0, 0.18],
+    colors: [surfaceRaised, surface],
   );
 
-  /// Solid backdrop shadow behind the title/logo.
-  static const Color titleShadow = Color(0xFF046A2C);
-
-  // ── Neutrals ──────────────────────────────────────────────────────────
-  static const Color white = Color(0xFFFFFFFF);
-  static const Color textDark = Color(0xFF111111);
-  static const Color textGrey = Color(0xFF7A7A7A);
-  static const Color hintGrey = Color(0xFF9E9E9E);
-
-  /// Muted fill and hairline border for panels (e.g. password checklist).
-  static const Color surfaceMuted = Color(0xFFF6F6F6);
-  static const Color border = Color(0xFFE0E0E0);
-
-  // ── Feedback / overlay ─────────────────────────────────────────────────
-  /// Error accent for invalid fields and error snackbars (Colors.redAccent).
-  static const Color error = Color(0xFFFF5252);
-
-  /// Red accent for the user's current-location pin and its radar rings.
-  static const Color currentLocation = Color(0xFFE53935);
-
-  /// Dialog barrier scrim (Colors.black26).
-  static const Color scrim = Color(0x42000000);
+  // Temporary semantic aliases for existing feature widgets. New UI should
+  // use the explicit token names above.
+  // Primary actions are intentionally charcoal, not white. White remains a
+  // text/icon color so it stays legible on the dark surfaces.
+  static const Color primary = surfaceHigh;
+  static const Color white = textPrimary;
+  static const Color textDark = textPrimary;
+  static const Color textGrey = textSecondary;
+  static const Color hintGrey = textMuted;
+  static const Color surfaceMuted = surfaceRaised;
+  static const Color error = Color(0xFF747474);
+  static const Color currentLocation = textPrimary;
+  static const Color greenDark = surface;
+  static const Color titleShadow = Color(0x59000000);
+  static const LinearGradient greenBackground = surfaceGradient;
 }

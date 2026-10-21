@@ -1,6 +1,6 @@
 /// Pure, side-effect-free validation for the sign-up form.
 ///
-/// Knows nothing about Supabase or the UI — it just takes the raw field
+/// Knows nothing about Firebase or the UI — it just takes the raw field
 /// values and reports which ones fail and why. The service layer calls this
 /// first; the card renders the returned per-field messages inline.
 library;

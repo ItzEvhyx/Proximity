@@ -27,7 +27,9 @@ class OtherTransitPaymentIndicator<T> extends StatelessWidget {
     // Build rows of 3 chips each
     final rows = <List<T>>[];
     for (var i = 0; i < values.length; i += 3) {
-      rows.add(values.sublist(i, i + 3 > values.length ? values.length : i + 3));
+      rows.add(
+        values.sublist(i, i + 3 > values.length ? values.length : i + 3),
+      );
     }
 
     return Container(

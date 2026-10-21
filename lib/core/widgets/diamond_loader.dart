@@ -35,13 +35,17 @@ class _DiamondLoaderState extends State<DiamondLoader>
     )..repeat();
     _scale = TweenSequence<double>([
       TweenSequenceItem(
-        tween: Tween(begin: 1.0, end: 0.65)
-            .chain(CurveTween(curve: Curves.easeInOut)),
+        tween: Tween(
+          begin: 1.0,
+          end: 0.65,
+        ).chain(CurveTween(curve: Curves.easeInOut)),
         weight: 50,
       ),
       TweenSequenceItem(
-        tween: Tween(begin: 0.65, end: 1.0)
-            .chain(CurveTween(curve: Curves.easeInOut)),
+        tween: Tween(
+          begin: 0.65,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeInOut)),
         weight: 50,
       ),
     ]).animate(_controller);

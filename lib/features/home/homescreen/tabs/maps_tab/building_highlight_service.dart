@@ -13,7 +13,7 @@ import 'package:http/http.dart' as http;
 /// case only the pin is shown.
 class BuildingHighlightService {
   BuildingHighlightService({http.Client? client})
-      : _client = client ?? http.Client();
+    : _client = client ?? http.Client();
 
   final http.Client _client;
 

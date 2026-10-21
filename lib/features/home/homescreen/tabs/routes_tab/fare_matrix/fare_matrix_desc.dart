@@ -1,26 +1,19 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../../core/theme/app_colors.dart';
-import '../../../../../../core/widgets/asset_icon.dart';
 
-/// Green gradient header card — "Fare Matrix" title + money icon + description.
+/// Solid, high-contrast fare matrix header card.
 /// Fully static, no state, no animations. Renders in a single paint pass.
 class FareMatrixDesc extends StatelessWidget {
   const FareMatrixDesc({super.key});
-
-  static final Color _gradientEnd =
-      Color.lerp(AppColors.primary, Colors.black, 0.18)!;
 
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        gradient: LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: [AppColors.primary, _gradientEnd],
-        ),
+        gradient: AppColors.surfaceGradient,
+        border: Border.all(color: AppColors.border),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 22),
@@ -40,8 +33,8 @@ class FareMatrixDesc extends StatelessWidget {
                     color: AppColors.white,
                   ),
                 ),
-                const AssetIcon(
-                  'public/assets/icons/money_icon.png',
+                const Icon(
+                  Icons.payments_outlined,
                   size: 36,
                   color: AppColors.white,
                 ),

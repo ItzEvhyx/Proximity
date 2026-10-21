@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/otp_dialogs.dart';
@@ -8,7 +9,8 @@ import 'forgot_password_service.dart';
 /// rounded top corners. Same height as the login card. Anchored by its parent;
 /// only its inner content scrolls when the keyboard opens. The parent screen
 /// owns the login <-> forgot-password transition, so this card never navigates
-/// itself — it just calls [onBack] / [onOtpSent].
+/// itself — Firebase emails a secure password-reset link, then the card
+/// returns the user to login.
 class ForgotPassCard extends StatefulWidget {
   const ForgotPassCard({
     super.key,
@@ -17,14 +19,15 @@ class ForgotPassCard extends StatefulWidget {
     this.onOtpSent,
   });
 
-  /// Shared service that validates the email and emails the reset code.
+  /// Shared service that validates the email and asks Firebase to send a
+  /// password-reset link.
   final ForgotPasswordService service;
 
   /// Fired when the user taps the bottom-left back ("<") button.
   final VoidCallback? onBack;
 
-  /// Fired once the reset code has been emailed; carries the target email so
-  /// the parent can advance to the OTP card.
+  /// Retained for source compatibility; Firebase reset no longer uses a
+  /// client-entered OTP.
   final ValueChanged<String>? onOtpSent;
 
   @override
@@ -47,7 +50,7 @@ class _ForgotPassCardState extends State<ForgotPassCard> {
     FocusScope.of(context).unfocus();
     setState(() => _emailError = null);
 
-    showOtpLoadingDialog(context, title: 'Sending OTP');
+    showOtpLoadingDialog(context, title: 'Sending reset email');
     setState(() => _isSubmitting = true);
     final result = await widget.service.startReset(
       email: _emailController.text,
@@ -58,7 +61,13 @@ class _ForgotPassCardState extends State<ForgotPassCard> {
 
     switch (result.status) {
       case ResetSendStatus.sent:
-        widget.onOtpSent?.call(result.email ?? _emailController.text.trim());
+        await showOtpSuccessDialog(
+          context,
+          title: 'Check your email',
+          message:
+              'We sent a password reset link. Open it to choose a new password, then return here to sign in.',
+        );
+        widget.onBack?.call();
       case ResetSendStatus.invalidEmail:
         setState(() => _emailError = result.message ?? 'Invalid email');
       case ResetSendStatus.noAccount:
@@ -86,7 +95,7 @@ class _ForgotPassCardState extends State<ForgotPassCard> {
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(
-        color: AppColors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       clipBehavior: Clip.antiAlias,
@@ -111,47 +120,47 @@ class _ForgotPassCardState extends State<ForgotPassCard> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-              // ── Lock illustration ─────────────────────────────────────
-              Center(
-                child: Image.asset(
-                  'public/assets/images/forgot_lock_img.png',
-                  height: 140,
-                  fit: BoxFit.contain,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Center(
-                child: Text(
-                  'Forgot Password',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    color: AppColors.primary,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'Please enter your email address to reset your password',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  color: AppColors.textGrey,
-                  fontSize: 14,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 20),
-              _fieldLabel('Email'),
-              const SizedBox(height: 8),
-              _buildTextField(
-                controller: _emailController,
-                hintText: 'Enter Email...',
-                icon: Icons.mail_outline,
-                keyboardType: TextInputType.emailAddress,
-                errorText: _emailError,
-              ),
+                    // ── Lock illustration ─────────────────────────────────────
+                    Center(
+                      child: SvgPicture.asset(
+                        'public/assets/images/forgot_lock_img.svg',
+                        height: 140,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Center(
+                      child: Text(
+                        'Forgot Password',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          color: AppColors.primary,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Please enter your email address to reset your password',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        color: AppColors.textGrey,
+                        fontSize: 14,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    _fieldLabel('Email'),
+                    const SizedBox(height: 8),
+                    _buildTextField(
+                      controller: _emailController,
+                      hintText: 'Enter Email...',
+                      icon: Icons.mail_outline,
+                      keyboardType: TextInputType.emailAddress,
+                      errorText: _emailError,
+                    ),
                     const SizedBox(height: 20),
                     _buildSendButton(),
                   ],
@@ -160,10 +169,7 @@ class _ForgotPassCardState extends State<ForgotPassCard> {
             ),
             // ── Bottom-left back button, pinned to the card's bottom edge ──
             Padding(
-              padding: EdgeInsets.only(
-                left: 16,
-                bottom: 8 + bottomPadding,
-              ),
+              padding: EdgeInsets.only(left: 16, bottom: 8 + bottomPadding),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: IconButton(
@@ -227,7 +233,10 @@ class _ForgotPassCardState extends State<ForgotPassCard> {
           fontSize: 15,
         ),
         prefixIcon: Icon(icon, color: AppColors.textDark, size: 24),
-        contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 16,
+          horizontal: 12,
+        ),
         errorText: errorText,
         errorMaxLines: 2,
         errorStyle: const TextStyle(fontFamily: 'Inter', fontSize: 12),
@@ -248,9 +257,9 @@ class _ForgotPassCardState extends State<ForgotPassCard> {
         onPressed: _isSubmitting ? null : _onSendPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
-          foregroundColor: AppColors.white,
+          foregroundColor: AppColors.textPrimary,
           disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.6),
-          disabledForegroundColor: AppColors.white,
+          disabledForegroundColor: AppColors.textPrimary,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),

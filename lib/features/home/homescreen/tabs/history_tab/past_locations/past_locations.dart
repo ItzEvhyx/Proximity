@@ -117,17 +117,18 @@ class _PastLocationRow extends StatelessWidget {
             width: _circleSize,
             child: Column(
               children: [
-                Expanded(
-                  child: _DashedVerticalLine(visible: !isFirst),
-                ),
+                Expanded(child: _DashedVerticalLine(visible: !isFirst)),
                 // Circle node with date number (day of month)
                 Container(
                   width: _circleSize,
                   height: _circleSize,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AppColors.white,
-                    border: Border.all(color: AppColors.primary, width: 3),
+                    color: AppColors.surfaceHigh,
+                    border: Border.all(
+                      color: AppColors.textSecondary,
+                      width: 2,
+                    ),
                   ),
                   alignment: Alignment.center,
                   child: Text(
@@ -136,13 +137,11 @@ class _PastLocationRow extends StatelessWidget {
                       fontFamily: 'Poppins',
                       fontSize: 14,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.textDark,
+                      color: AppColors.textPrimary,
                     ),
                   ),
                 ),
-                Expanded(
-                  child: _DashedVerticalLine(visible: !isLast),
-                ),
+                Expanded(child: _DashedVerticalLine(visible: !isLast)),
               ],
             ),
           ),
@@ -190,7 +189,7 @@ class _DashedVerticalPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = AppColors.primary
+      ..color = AppColors.textMuted
       ..strokeWidth = 3
       ..strokeCap = StrokeCap.round;
 
@@ -221,7 +220,7 @@ class _LocationCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: AppColors.surfaceRaised,
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(14),
           bottomLeft: Radius.circular(14),
@@ -246,13 +245,17 @@ class _LocationCard extends StatelessWidget {
               fontFamily: 'Poppins',
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: AppColors.textDark,
+              color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 4),
           Row(
             children: [
-              const Icon(Icons.access_time_rounded, size: 12, color: AppColors.primary),
+              const Icon(
+                Icons.access_time_rounded,
+                size: 12,
+                color: AppColors.textSecondary,
+              ),
               const SizedBox(width: 4),
               Text(
                 trip.timeLabel,
@@ -260,7 +263,7 @@ class _LocationCard extends StatelessWidget {
                   fontFamily: 'Inter',
                   fontSize: 10,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.textGrey,
+                  color: AppColors.textSecondary,
                 ),
               ),
             ],
@@ -268,7 +271,11 @@ class _LocationCard extends StatelessWidget {
           const SizedBox(height: 3),
           Row(
             children: [
-              const Icon(Icons.location_on_rounded, size: 12, color: AppColors.primary),
+              const Icon(
+                Icons.location_on_rounded,
+                size: 12,
+                color: AppColors.textSecondary,
+              ),
               const SizedBox(width: 4),
               Text(
                 trip.distanceLabel,
@@ -276,7 +283,7 @@ class _LocationCard extends StatelessWidget {
                   fontFamily: 'Inter',
                   fontSize: 10,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.textGrey,
+                  color: AppColors.textSecondary,
                 ),
               ),
             ],

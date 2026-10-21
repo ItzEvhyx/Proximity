@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../../../../core/theme/app_colors.dart';
 
-/// "IMPORTANT NOTES" card — green rounded card with a warning icon and
+/// "IMPORTANT NOTES" card — dark rounded card with a warning icon and
 /// a list of notes. Shared across all non-train transit types; the content
 /// is driven by the [notes] list passed in from the data model.
 class ImportantNotesCard extends StatelessWidget {
@@ -10,19 +10,13 @@ class ImportantNotesCard extends StatelessWidget {
 
   final List<String> notes;
 
-  static final Color _gradientEnd =
-      Color.lerp(AppColors.primary, Colors.black, 0.12)!;
-
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        gradient: LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: [AppColors.primary, _gradientEnd],
-        ),
+        gradient: AppColors.surfaceGradient,
+        border: Border.all(color: AppColors.border),
       ),
       child: Padding(
         padding: const EdgeInsets.all(18),
@@ -36,7 +30,7 @@ class ImportantNotesCard extends StatelessWidget {
                   width: 28,
                   height: 28,
                   decoration: const BoxDecoration(
-                    color: AppColors.white,
+                    color: AppColors.textPrimary,
                     shape: BoxShape.circle,
                   ),
                   child: const Center(
@@ -46,7 +40,7 @@ class ImportantNotesCard extends StatelessWidget {
                         fontFamily: 'Poppins',
                         fontWeight: FontWeight.w800,
                         fontSize: 16,
-                        color: AppColors.error,
+                        color: AppColors.onLight,
                       ),
                     ),
                   ),

@@ -14,9 +14,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   video_player: ^2.11.1
   lottie: ^3.4.0
-  supabase_flutter: ^2.15.3
   flutter_dotenv: ^6.0.1
-  mailer: ^7.1.0
   google_sign_in: 6.2.1
   shared_preferences: ^2.5.5
   mapbox_maps_flutter: ^2.0.0
@@ -33,8 +31,12 @@ dependencies:
   volume_controller: ^3.5.0
   flutter_foreground_task: ^10.0.0
   flutter_overlay_window: ^0.5.0
+  flutter_svg: ^2.2.3
   sqflite: ^2.4.1
   path: ^1.9.0
+  firebase_core: ^5.0.0
+  firebase_auth: ^7.0.0
+  cloud_firestore: ^7.0.0
 
 dev_dependencies:
   flutter_test:

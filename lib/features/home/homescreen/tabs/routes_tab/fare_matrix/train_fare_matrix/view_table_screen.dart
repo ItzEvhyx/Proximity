@@ -54,15 +54,15 @@ class _ViewTableScreenState extends State<ViewTableScreen> {
   }
 
   RailLine _toRailLine(FareCategory c) => switch (c) {
-        FareCategory.lrt1 => RailLine.lrt1,
-        FareCategory.lrt2 => RailLine.lrt2,
-        FareCategory.mrt => RailLine.mrt3,
-      };
+    FareCategory.lrt1 => RailLine.lrt1,
+    FareCategory.lrt2 => RailLine.lrt2,
+    FareCategory.mrt => RailLine.mrt3,
+  };
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7FAF8),
+      backgroundColor: AppColors.bg,
       body: Stack(
         children: [
           // Scrollable content: table + tips
@@ -89,8 +89,10 @@ class _ViewTableScreenState extends State<ViewTableScreen> {
             child: GestureDetector(
               onTap: () => Navigator.of(context).pop(),
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.white,
                   borderRadius: BorderRadius.circular(20),
@@ -106,8 +108,11 @@ class _ViewTableScreenState extends State<ViewTableScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.arrow_back_ios_rounded,
-                        size: 14, color: AppColors.primary),
+                    const Icon(
+                      Icons.arrow_back_ios_rounded,
+                      size: 14,
+                      color: AppColors.primary,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       'Back',
@@ -134,7 +139,10 @@ class _ViewTableScreenState extends State<ViewTableScreen> {
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.primary, Color.lerp(AppColors.primary, Colors.black, 0.15)!],
+          colors: [
+            AppColors.primary,
+            Color.lerp(AppColors.primary, Colors.black, 0.15)!,
+          ],
         ),
         borderRadius: BorderRadius.circular(20),
       ),
@@ -149,7 +157,7 @@ class _ViewTableScreenState extends State<ViewTableScreen> {
             ),
             child: const Center(
               child: AssetIcon(
-                'public/assets/icons/train_icon.png',
+                'public/assets/icons/train_icon.svg',
                 size: 22,
                 color: AppColors.white,
               ),
@@ -208,7 +216,7 @@ class _ViewTableScreenState extends State<ViewTableScreen> {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE3EFE7)),
+        border: Border.all(color: AppColors.border),
       ),
       clipBehavior: Clip.antiAlias,
       child: SingleChildScrollView(
@@ -221,10 +229,7 @@ class _ViewTableScreenState extends State<ViewTableScreen> {
           headingRowHeight: 40,
           horizontalMargin: 8,
           columnSpacing: 0,
-          border: TableBorder.all(
-            color: const Color(0xFFE3EFE7),
-            width: 0.5,
-          ),
+          border: TableBorder.all(color: AppColors.surfaceRaised, width: 0.5),
           columns: [
             DataColumn(
               label: Container(
@@ -262,9 +267,7 @@ class _ViewTableScreenState extends State<ViewTableScreen> {
             for (var i = 0; i < n; i++)
               DataRow(
                 color: WidgetStateProperty.resolveWith((states) {
-                  return i.isEven
-                      ? AppColors.white
-                      : const Color(0xFFF7FAF8);
+                  return i.isEven ? AppColors.white : AppColors.surfaceRaised;
                 }),
                 cells: [
                   DataCell(
@@ -278,7 +281,7 @@ class _ViewTableScreenState extends State<ViewTableScreen> {
                           fontFamily: 'Inter',
                           fontWeight: FontWeight.w700,
                           fontSize: 10,
-                          color: Color(0xFF12261B),
+                          color: AppColors.textPrimary,
                         ),
                       ),
                     ),
@@ -292,12 +295,13 @@ class _ViewTableScreenState extends State<ViewTableScreen> {
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontFamily: 'Inter',
-                            fontWeight:
-                                i == j ? FontWeight.w400 : FontWeight.w700,
+                            fontWeight: i == j
+                                ? FontWeight.w400
+                                : FontWeight.w700,
                             fontSize: 10,
                             color: i == j
-                                ? const Color(0xFF8CA096)
-                                : const Color(0xFF0E8A44),
+                                ? AppColors.textMuted
+                                : AppColors.textPrimary,
                           ),
                         ),
                       ),
@@ -326,7 +330,7 @@ class _ViewTableScreenState extends State<ViewTableScreen> {
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE3EFE7)),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -337,7 +341,7 @@ class _ViewTableScreenState extends State<ViewTableScreen> {
               fontFamily: 'Poppins',
               fontWeight: FontWeight.w700,
               fontSize: 15,
-              color: Color(0xFF12261B),
+              color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 14),
@@ -373,7 +377,7 @@ class _ViewTableScreenState extends State<ViewTableScreen> {
                       fontFamily: 'Inter',
                       fontSize: 12,
                       height: 1.5,
-                      color: Color(0xFF4B5D53),
+                      color: AppColors.textSecondary,
                     ),
                   ),
                 ),
@@ -396,7 +400,7 @@ class _ViewTableScreenState extends State<ViewTableScreen> {
         fontFamily: 'Inter',
         fontSize: 10,
         height: 1.5,
-        color: Color(0xFF8CA096),
+        color: AppColors.textMuted,
       ),
       textAlign: TextAlign.center,
     );

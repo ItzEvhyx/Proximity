@@ -93,8 +93,7 @@ class ProximityForegroundService {
   /// Requests notification permission (Android 13+) so the foreground service
   /// notification can be shown. Returns true if granted.
   Future<bool> requestPermissions() async {
-    final notifPerm =
-        await FlutterForegroundTask.checkNotificationPermission();
+    final notifPerm = await FlutterForegroundTask.checkNotificationPermission();
     if (notifPerm != NotificationPermission.granted) {
       final result =
           await FlutterForegroundTask.requestNotificationPermission();
@@ -117,6 +116,11 @@ class ProximityForegroundService {
     String text = 'Tracking your location in the background',
   }) async {
     if (!_initialized) init();
+
+    // Ask only when the user starts background tracking, never while the app
+    // is launching. This avoids a system permission/settings activity keeping
+    // the launch splash visible indefinitely.
+    if (!await requestPermissions()) return;
 
     if (await FlutterForegroundTask.isRunningService) {
       // Already running — just update the notification text.

@@ -90,7 +90,9 @@ class _LoginCardState extends State<LoginCard> {
       case LoginStatus.googleCancelled:
         break; // user backed out — no error
       default:
-        setState(() => _googleError = result.message ?? 'Google sign-in failed.');
+        setState(
+          () => _googleError = result.message ?? 'Google sign-in failed.',
+        );
     }
   }
 
@@ -118,7 +120,7 @@ class _LoginCardState extends State<LoginCard> {
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(
-        color: AppColors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       clipBehavior: Clip.antiAlias,
@@ -140,76 +142,76 @@ class _LoginCardState extends State<LoginCard> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
-            _fieldLabel('Email'),
-            const SizedBox(height: 8),
-            _buildTextField(
-              controller: _emailController,
-              hintText: 'Enter Email...',
-              icon: Icons.mail_outline,
-              keyboardType: TextInputType.emailAddress,
-              errorText: _emailError,
-            ),
-            const SizedBox(height: 16),
-            _fieldLabel('Password'),
-            const SizedBox(height: 8),
-            _buildTextField(
-              controller: _passwordController,
-              hintText: 'Enter Password...',
-              icon: Icons.lock_outline,
-              obscureText: _obscurePassword,
-              errorText: _passwordError,
-              suffix: IconButton(
-                splashRadius: 20,
-                onPressed: () =>
-                    setState(() => _obscurePassword = !_obscurePassword),
-                icon: Icon(
-                  _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                  color: AppColors.textDark,
-                ),
+              _fieldLabel('Email'),
+              const SizedBox(height: 8),
+              _buildTextField(
+                controller: _emailController,
+                hintText: 'Enter Email...',
+                icon: Icons.mail_outline,
+                keyboardType: TextInputType.emailAddress,
+                errorText: _emailError,
               ),
-            ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: widget.onForgotPassword,
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: const Text(
-                  'Forgot Password?',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
+              const SizedBox(height: 16),
+              _fieldLabel('Password'),
+              const SizedBox(height: 8),
+              _buildTextField(
+                controller: _passwordController,
+                hintText: 'Enter Password...',
+                icon: Icons.lock_outline,
+                obscureText: _obscurePassword,
+                errorText: _passwordError,
+                suffix: IconButton(
+                  splashRadius: 20,
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
+                  icon: Icon(
+                    _obscurePassword ? Icons.visibility : Icons.visibility_off,
                     color: AppColors.textDark,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12.5,
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 14),
-            _buildLoginButton(),
-            const SizedBox(height: 18),
-            _buildDivider(),
-            const SizedBox(height: 18),
-            _buildSocialButtons(),
-            if (_googleError != null) ...[
-              const SizedBox(height: 10),
-              Text(
-                _googleError!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  color: AppColors.error,
-                  fontSize: 12.5,
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: widget.onForgotPassword,
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text(
+                    'Forgot Password?',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      color: AppColors.textDark,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12.5,
+                    ),
+                  ),
                 ),
               ),
+              const SizedBox(height: 14),
+              _buildLoginButton(),
+              const SizedBox(height: 18),
+              _buildDivider(),
+              const SizedBox(height: 18),
+              _buildSocialButtons(),
+              if (_googleError != null) ...[
+                const SizedBox(height: 10),
+                Text(
+                  _googleError!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    color: AppColors.error,
+                    fontSize: 12.5,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 22),
+              _buildSignUpPrompt(),
             ],
-            const SizedBox(height: 22),
-            _buildSignUpPrompt(),
-          ],
-        ),
+          ),
         ),
       ),
     );
@@ -284,9 +286,9 @@ class _LoginCardState extends State<LoginCard> {
         onPressed: _isLoggingIn ? null : _onLoginPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
-          foregroundColor: AppColors.white,
+          foregroundColor: AppColors.textPrimary,
           disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.6),
-          disabledForegroundColor: AppColors.white,
+          disabledForegroundColor: AppColors.textPrimary,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -340,7 +342,7 @@ class _LoginCardState extends State<LoginCard> {
         Expanded(
           child: _socialButton(
             label: 'Google',
-            assetPath: 'public/assets/icons/google_icon.png',
+            monogram: 'G',
             onPressed: _isGoogleLoading ? null : _onGooglePressed,
             loading: _isGoogleLoading,
           ),
@@ -349,7 +351,7 @@ class _LoginCardState extends State<LoginCard> {
         Expanded(
           child: _socialButton(
             label: 'Facebook',
-            assetPath: 'public/assets/icons/facebook_icon.png',
+            monogram: 'f',
             onPressed: () {},
           ),
         ),
@@ -359,7 +361,7 @@ class _LoginCardState extends State<LoginCard> {
 
   Widget _socialButton({
     required String label,
-    required String assetPath,
+    required String monogram,
     required VoidCallback? onPressed,
     bool loading = false,
   }) {
@@ -388,7 +390,15 @@ class _LoginCardState extends State<LoginCard> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Image.asset(assetPath, height: 22, width: 22),
+                  Text(
+                    monogram,
+                    style: const TextStyle(
+                      fontFamily: 'Poppins',
+                      color: AppColors.textDark,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                   const SizedBox(width: 8),
                   Flexible(
                     child: Text(

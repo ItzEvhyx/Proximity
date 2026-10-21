@@ -4,13 +4,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../database/app_database.dart';
 import '../shared_prefs/shared_prefs.dart';
-import '../supabase/supabase_client.dart';
+import '../firebase/firebase_client.dart';
 
 /// Handles bidirectional sync between local storage (SharedPreferences +
-/// SQLite) and the Supabase `profiles` table.
+/// SQLite) and the Firestore `profiles` collection.
 ///
 /// • [pushToSqlite] — copies current SharedPreferences settings into SQLite.
-/// • [pullFromCloud] — fetches the user's settings from Supabase and writes
+/// • [pullFromCloud] — fetches the user's settings from Firestore and writes
 ///   them to both SharedPreferences and SQLite (used on login / device switch).
 /// • [migrateTripsToSqlite] — one-time migration of pinned trips from the
 ///   SharedPreferences JSON blob into the SQLite `pinned_trips` table.
@@ -25,33 +25,27 @@ class SettingsSync {
     final db = AppDatabase.instance;
     await db.setAllSettings({
       'alarm_sound': AppPrefs.alarmSound,
-      'alert_zone_distances':
-          AppPrefs.alertZoneDistances.map((d) => d.toString()).join(','),
+      'alert_zone_distances': AppPrefs.alertZoneDistances
+          .map((d) => d.toString())
+          .join(','),
       'alert_zone_unit': AppPrefs.alertZoneUnit,
       'dismiss_method': AppPrefs.dismissMethod,
       'vibration_intensity': AppPrefs.vibrationIntensity,
     });
   }
 
-  /// Fetches the user's alarm/settings from Supabase and writes them to both
+  /// Fetches the user's alarm/settings from Firestore and writes them to both
   /// SharedPreferences (for fast synchronous reads) and SQLite (for durability).
   ///
   /// Call this after a successful login to ensure a new device gets the user's
   /// cloud-saved preferences.
   Future<void> pullFromCloud() async {
-    final userId = supabase.auth.currentUser?.id;
+    final userId = firebaseAuth.currentUser?.uid;
     if (userId == null) return;
 
     try {
-      final row = await supabase
-          .from('profiles')
-          .select(
-            'alarm_sound, alert_zone_distances, alert_zone_unit, '
-            'dismiss_method, vibration_intensity',
-          )
-          .eq('id', userId)
-          .maybeSingle();
-
+      final snapshot = await profiles.doc(userId).get();
+      final row = snapshot.data();
       if (row == null) return;
 
       // ── Alarm sound ──

@@ -243,7 +243,9 @@ class WayFinderTabState extends State<WayFinderTab> {
           child: Column(
             children: [
               CircularProgressIndicator(
-                  color: AppColors.primary, strokeWidth: 2.5),
+                color: AppColors.primary,
+                strokeWidth: 2.5,
+              ),
               SizedBox(height: 12),
               Text(
                 'Planning your route...',
@@ -278,13 +280,15 @@ class WayFinderTabState extends State<WayFinderTab> {
 
     if (_routeResult != null) {
       final nodes = _routeResult!.steps
-          .map((s) => RouteNode(
-                title: s.title,
-                eta: s.eta,
-                distance: s.distance,
-                description: s.description,
-                isDestination: s.isDestination,
-              ))
+          .map(
+            (s) => RouteNode(
+              title: s.title,
+              eta: s.eta,
+              distance: s.distance,
+              description: s.description,
+              isDestination: s.isDestination,
+            ),
+          )
           .toList();
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -296,8 +300,10 @@ class WayFinderTabState extends State<WayFinderTab> {
             child: GestureDetector(
               onTap: () => _openPathScreen(),
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.primary,
                   borderRadius: BorderRadius.circular(30),
@@ -305,8 +311,11 @@ class WayFinderTabState extends State<WayFinderTab> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    AssetIcon('public/assets/icons/maps_icon.png',
-                        size: 18, color: AppColors.white),
+                    AssetIcon(
+                      'public/assets/icons/maps_icon.svg',
+                      size: 18,
+                      color: AppColors.white,
+                    ),
                     const SizedBox(width: 8),
                     const Text(
                       'View in map',

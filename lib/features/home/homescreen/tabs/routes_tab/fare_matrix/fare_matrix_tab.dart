@@ -106,11 +106,11 @@ class _FareMatrixTabState extends State<FareMatrixTab> {
   }
 
   FareCategory _transitTypeToFareCategory(TransitType t) => switch (t) {
-        TransitType.lrt1 => FareCategory.lrt1,
-        TransitType.lrt2 => FareCategory.lrt2,
-        TransitType.mrt => FareCategory.mrt,
-        _ => _category, // keep current for non-train
-      };
+    TransitType.lrt1 => FareCategory.lrt1,
+    TransitType.lrt2 => FareCategory.lrt2,
+    TransitType.mrt => FareCategory.mrt,
+    _ => _category, // keep current for non-train
+  };
 
   void _swapStations() {
     setState(() {
@@ -200,8 +200,7 @@ class _FareMatrixTabState extends State<FareMatrixTab> {
                   origin: _origin,
                   destination: _destination,
                   onOriginChanged: (s) => setState(() => _origin = s),
-                  onDestinationChanged: (s) =>
-                      setState(() => _destination = s),
+                  onDestinationChanged: (s) => setState(() => _destination = s),
                   onSwap: _swapStations,
                   fareType: _fareType,
                   category: _category,
@@ -216,8 +215,9 @@ class _FareMatrixTabState extends State<FareMatrixTab> {
       SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          child:
-              _contentReady ? TransitRouteMap(category: _category) : const SizedBox.shrink(),
+          child: _contentReady
+              ? TransitRouteMap(category: _category)
+              : const SizedBox.shrink(),
         ),
       ),
     ];
@@ -360,7 +360,9 @@ class _FareMatrixTabState extends State<FareMatrixTab> {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: _contentReady
-              ? const ImportantNotesCard(notes: UvExpressFareData.importantNotes)
+              ? const ImportantNotesCard(
+                  notes: UvExpressFareData.importantNotes,
+                )
               : const SkeletonBox(height: 120, borderRadius: 20),
         ),
       ),

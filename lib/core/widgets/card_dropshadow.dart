@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 
-/// Reusable card with a subtle offset drop-shadow — zero blur, zero GPU
-/// compositing cost during scroll. Use this anywhere a white content card
+/// Reusable solid dark card with a subtle shadow — zero blur, zero GPU
+/// compositing cost during scroll. Use this anywhere a dense content card
 /// with depth is needed (fare matrix, route finder, history, etc.).
 ///
 /// The shadow is a solid-color rectangle offset 4px right and 4px down,
@@ -33,9 +33,9 @@ class DropShadowCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: AppColors.surfaceRaised,
         borderRadius: BorderRadius.circular(borderRadius),
-        border: Border.all(color: const Color(0x10000000)),
+        border: Border.all(color: AppColors.border),
         boxShadow: const [
           BoxShadow(
             color: Color(0x14000000), // ~8% black
@@ -45,10 +45,7 @@ class DropShadowCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Padding(
-        padding: padding,
-        child: child,
-      ),
+      child: Padding(padding: padding, child: child),
     );
   }
 }

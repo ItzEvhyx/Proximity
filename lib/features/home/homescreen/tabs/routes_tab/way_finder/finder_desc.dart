@@ -21,9 +21,7 @@ class FinderDesc extends StatelessWidget {
         child: Stack(
           children: [
             // Base solid green background.
-            const Positioned.fill(
-              child: ColoredBox(color: AppColors.primary),
-            ),
+            const Positioned.fill(child: ColoredBox(color: AppColors.primary)),
 
             // Map image pinned to the right — fetched from Cloudinary.
             Positioned(

@@ -16,7 +16,7 @@ class LoginValidationResult {
 
 /// Lightweight validation for the login form. Unlike sign-up, login only
 /// checks that the inputs are present and the email is well-formed — the
-/// credentials themselves are verified by Supabase.
+/// credentials themselves are verified by Firebase Authentication.
 class LoginValidator {
   const LoginValidator._();
 

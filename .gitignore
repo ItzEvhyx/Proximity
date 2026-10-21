@@ -1,4 +1,4 @@
-# Environment secrets (Supabase keys, etc.)
+# Environment secrets
 .env
 .env.*
 !.env.example

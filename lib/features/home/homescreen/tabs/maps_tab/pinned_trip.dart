@@ -35,8 +35,18 @@ class PinnedTrip {
   /// "12 Jul 2026" style date label.
   String get dateLabel {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     final d = pinnedAt;
     return '${d.day} ${months[d.month - 1]} ${d.year}';
@@ -63,16 +73,16 @@ class PinnedTrip {
   }
 
   Map<String, dynamic> toJson() => {
-        'name': name,
-        'address': address,
-        'lng': longitude,
-        'lat': latitude,
-        'distance': distanceMeters,
-        'start': startLocationName,
-        'startLng': startLongitude,
-        'startLat': startLatitude,
-        'at': pinnedAt.toIso8601String(),
-      };
+    'name': name,
+    'address': address,
+    'lng': longitude,
+    'lat': latitude,
+    'distance': distanceMeters,
+    'start': startLocationName,
+    'startLng': startLongitude,
+    'startLat': startLatitude,
+    'at': pinnedAt.toIso8601String(),
+  };
 
   static PinnedTrip? fromJson(Map<String, dynamic> json) {
     final name = json['name'] as String?;

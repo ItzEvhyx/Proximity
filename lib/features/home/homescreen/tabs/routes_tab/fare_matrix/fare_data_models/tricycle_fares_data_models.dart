@@ -40,15 +40,15 @@ enum TricycleType { tricycle, eTrike }
 
 extension TricycleTypeDisplay on TricycleType {
   String get label => switch (this) {
-        TricycleType.tricycle => 'Tricycle',
-        TricycleType.eTrike => 'E-Trike',
-      };
+    TricycleType.tricycle => 'Tricycle',
+    TricycleType.eTrike => 'E-Trike',
+  };
 
   /// Chip label shown in the payment indicator selector.
   String get chipLabel => switch (this) {
-        TricycleType.tricycle => 'Tricycle',
-        TricycleType.eTrike => 'E - Trike',
-      };
+    TricycleType.tricycle => 'Tricycle',
+    TricycleType.eTrike => 'E - Trike',
+  };
 }
 
 /// Fare configuration for tricycles/pedicabs.
@@ -136,15 +136,13 @@ class TricycleFareData {
 
   // ── E-Trike (Manila example) ───────────────────────────────────────────
   // Flat rate: ₱20.00 per passenger within approved route
-  static const eTrike = TricycleFareConfig(
-    flatFare: 20.00,
-  );
+  static const eTrike = TricycleFareConfig(flatFare: 20.00);
 
   /// Returns the fare config for a given tricycle type (Manila defaults).
   static TricycleFareConfig configFor(TricycleType type) => switch (type) {
-        TricycleType.tricycle => tricycleManila,
-        TricycleType.eTrike => eTrike,
-      };
+    TricycleType.tricycle => tricycleManila,
+    TricycleType.eTrike => eTrike,
+  };
 
   /// "How It Works" bullet points for Tricycle transit.
   static const List<HowItWorksPoint> howItWorks = [

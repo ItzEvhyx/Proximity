@@ -21,11 +21,9 @@ Future<void> showOtpLoadingDialog(
     builder: (_) => PopScope(
       canPop: false,
       child: Dialog(
-        backgroundColor: AppColors.white,
+        backgroundColor: AppColors.surface,
         insetPadding: const EdgeInsets.symmetric(horizontal: 32),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(28),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
           child: Column(
@@ -73,11 +71,9 @@ Future<void> showOtpSuccessDialog(
     barrierDismissible: false,
     barrierColor: AppColors.scrim,
     builder: (dialogContext) => Dialog(
-      backgroundColor: AppColors.white,
+      backgroundColor: AppColors.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 32),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(28),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
         child: Column(
@@ -127,7 +123,7 @@ Future<void> showOtpSuccessDialog(
                     Navigator.of(dialogContext, rootNavigator: true).pop(),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.white,
+                  foregroundColor: AppColors.onLight,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -149,5 +145,3 @@ Future<void> showOtpSuccessDialog(
     ),
   );
 }
-
-

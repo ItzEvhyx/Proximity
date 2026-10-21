@@ -21,12 +21,12 @@ class RouteStep {
   });
 
   factory RouteStep.fromJson(Map<String, dynamic> json) => RouteStep(
-        title: json['title'] as String? ?? '',
-        eta: json['eta'] as String? ?? '',
-        distance: json['distance'] as String? ?? '',
-        description: json['description'] as String? ?? '',
-        isDestination: json['isDestination'] as bool? ?? false,
-      );
+    title: json['title'] as String? ?? '',
+    eta: json['eta'] as String? ?? '',
+    distance: json['distance'] as String? ?? '',
+    description: json['description'] as String? ?? '',
+    isDestination: json['isDestination'] as bool? ?? false,
+  );
 }
 
 /// Route result containing steps + summary data.
@@ -131,7 +131,8 @@ class ClaudeService {
     final rawCoords = geometryJson['coordinates'] as List;
     final geometry = rawCoords
         .map<List<double>>(
-            (c) => [(c as List)[0] as double, (c as List)[1] as double])
+          (c) => [(c as List)[0] as double, (c as List)[1] as double],
+        )
         .toList();
 
     // Convert Mapbox steps into our RouteStep format.
@@ -173,13 +174,15 @@ class ClaudeService {
     // Ensure last step is marked as destination.
     if (result.isNotEmpty && !result.last.isDestination) {
       final last = result.removeLast();
-      result.add(RouteStep(
-        title: last.title,
-        eta: last.eta,
-        distance: last.distance,
-        description: last.description,
-        isDestination: true,
-      ));
+      result.add(
+        RouteStep(
+          title: last.title,
+          eta: last.eta,
+          distance: last.distance,
+          description: last.description,
+          isDestination: true,
+        ),
+      );
     }
 
     return result;

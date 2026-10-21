@@ -159,6 +159,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           Navigator.of(ctx).pop();
           // Switch to the Maps tab.
           setState(() => _tabIndex = 0);
+          _mapsController.setMapTabActive(true);
           // Auto-search, pin, and confirm the location.
           _mapsController.selectTrip(trip);
         },
@@ -204,7 +205,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           // Only show error and stop if it's a fatal error, not a transient
           // "no match" which just means the user was silent briefly.
           final errorType = err.errorMsg;
-          final isFatal = errorType == 'error_audio' ||
+          final isFatal =
+              errorType == 'error_audio' ||
               errorType == 'error_permission' ||
               errorType == 'error_network';
           if (mounted && isFatal) {
@@ -220,8 +222,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
     if (!_speechAvailable) {
       if (mounted) {
-        setState(() => _speechError =
-            'Microphone unavailable. Check app permissions.');
+        setState(
+          () => _speechError = 'Microphone unavailable. Check app permissions.',
+        );
       }
       return;
     }
@@ -287,7 +290,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     var attempts = 0;
     // Poll every 200ms for faster responsiveness. The search debounce is
     // 350ms so results typically arrive by attempt 2–3.
-    _autoSelectTimer = Timer.periodic(const Duration(milliseconds: 200), (timer) {
+    _autoSelectTimer = Timer.periodic(const Duration(milliseconds: 200), (
+      timer,
+    ) {
       attempts++;
       if (!mounted) {
         timer.cancel();
@@ -377,8 +382,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     // Word overlap
     final overlap = queryWords.intersection(nameWordsSet).length;
-    final maxWords =
-        queryWords.length > nameWordsSet.length ? queryWords.length : nameWordsSet.length;
+    final maxWords = queryWords.length > nameWordsSet.length
+        ? queryWords.length
+        : nameWordsSet.length;
     if (maxWords > 0 && overlap > 0) {
       return overlap / maxWords * 0.75;
     }
@@ -400,14 +406,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   /// Checks if the [query] could be an acronym for the [nameWords].
   /// Returns a score (0.9 for a match) or 0.
   /// Skips common filler words ("of", "the", "de", "ng", "sa").
-  double _acronymScore(String query, Set<String> queryWords, List<String> nameWords) {
+  double _acronymScore(
+    String query,
+    Set<String> queryWords,
+    List<String> nameWords,
+  ) {
     // Only try acronym matching for short queries (1–6 chars, single word).
     if (queryWords.length != 1 || query.length > 6) return 0;
 
     const fillers = {'of', 'the', 'de', 'ng', 'sa', 'and', 'in', 'at', 'del'};
 
     // Build acronym from name words (skipping fillers).
-    final significantWords = nameWords.where((w) => !fillers.contains(w)).toList();
+    final significantWords = nameWords
+        .where((w) => !fillers.contains(w))
+        .toList();
     if (significantWords.length < 2) return 0;
 
     final acronym = significantWords.map((w) => w[0]).join();
@@ -477,8 +489,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final isMapsTab = _tabIndex == 0;
 
     final tabs = <Widget>[
-      MapsTab(onMapReady: _handleMapReady, controller: _mapsController),
-      RoutesTab(mode: _routeMode, active: isRoutesTab, wayFinderKey: _wayFinderKey),
+      MapsTab(
+        onMapReady: _handleMapReady,
+        controller: _mapsController,
+        active: isMapsTab,
+      ),
+      RoutesTab(
+        mode: _routeMode,
+        active: isRoutesTab,
+        wayFinderKey: _wayFinderKey,
+      ),
       AnimatedBuilder(
         animation: _mapsController,
         builder: (context, _) => HistoryTab(
@@ -492,7 +512,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     ];
 
     return Scaffold(
-      backgroundColor: AppColors.white,
+      backgroundColor: AppColors.bg,
       // Keep the map, info card and navbar fixed when the keyboard opens; the
       // keyboard overlays them instead of pushing the whole layout up.
       resizeToAvoidBottomInset: false,
@@ -541,14 +561,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             ? _openFinderSearchGuide
                             : null,
                         child: AbsorbPointer(
-                          absorbing: isRoutesTab && _routeMode == RouteMode.finder,
+                          absorbing:
+                              isRoutesTab && _routeMode == RouteMode.finder,
                           child: LocationSearchBar(
                             controller: _mapsController.searchText,
                             focusNode: _mapsController.searchFocus,
                             onMicTap: _onMicTap,
                             micActive: _listening,
-                            disabled: isRoutesTab && _routeMode == RouteMode.matrix,
-                            showMic: !(isRoutesTab && _routeMode == RouteMode.finder),
+                            disabled:
+                                isRoutesTab && _routeMode == RouteMode.matrix,
+                            showMic:
+                                !(isRoutesTab &&
+                                    _routeMode == RouteMode.finder),
                           ),
                         ),
                       ),
@@ -567,7 +591,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       ],
                       // Voice transcription + search results / nearby
                       // places are exclusive to the Maps tab.
-                      if (isMapsTab && (_listening || _pendingAutoSelect || _speechError != null))
+                      if (isMapsTab &&
+                          (_listening ||
+                              _pendingAutoSelect ||
+                              _speechError != null))
                         _TranscriptionCard(
                           transcript: _transcript,
                           listening: _listening,
@@ -619,6 +646,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       currentIndex: _tabIndex,
                       onTap: (index) {
                         setState(() => _tabIndex = index);
+                        _mapsController.setMapTabActive(index == 0);
                         // Reload route history when switching to History tab.
                         if (index == 2) _loadRouteHistory();
                       },
@@ -709,9 +737,13 @@ class _TrackingCards extends StatelessWidget {
       padding: const EdgeInsets.only(top: 12),
       child: Row(
         children: [
-          Expanded(child: _TrackingPill(label: 'ETA', value: eta)),
+          Expanded(
+            child: _TrackingPill(label: 'ETA', value: eta),
+          ),
           const SizedBox(width: 10),
-          Expanded(child: _TrackingPill(label: 'Distance', value: distance)),
+          Expanded(
+            child: _TrackingPill(label: 'Distance', value: distance),
+          ),
         ],
       ),
     );
@@ -819,7 +851,9 @@ class _TranscriptionCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
-            hasError ? Icons.mic_off_rounded : (processing ? Icons.search_rounded : Icons.mic_rounded),
+            hasError
+                ? Icons.mic_off_rounded
+                : (processing ? Icons.search_rounded : Icons.mic_rounded),
             color: hasError ? AppColors.error : AppColors.primary,
             size: 22,
           ),
@@ -843,8 +877,8 @@ class _TranscriptionCard extends StatelessWidget {
                   hasError
                       ? error!
                       : (transcript.isEmpty
-                          ? 'Say a place or address…'
-                          : transcript),
+                            ? 'Say a place or address…'
+                            : transcript),
                   style: TextStyle(
                     fontFamily: 'Inter',
                     color: transcript.isEmpty && !hasError
@@ -881,7 +915,6 @@ class _TranscriptionCard extends StatelessWidget {
   }
 }
 
-
 /// Dialog shown when tapping a trip card on the History tab.
 /// Shows the trip name, estimated time, distance, and a pin icon.
 /// Cancel (dark gray) dismisses; Confirm switches to maps tab and re-pins.
@@ -894,7 +927,7 @@ class _RepinLocationDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: AppColors.white,
+      backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       insetPadding: const EdgeInsets.symmetric(horizontal: 40),
       child: Padding(
@@ -940,8 +973,11 @@ class _RepinLocationDialog extends StatelessWidget {
                       // Estimated time
                       Row(
                         children: [
-                          const Icon(Icons.access_time_rounded,
-                              size: 16, color: AppColors.textGrey),
+                          const Icon(
+                            Icons.access_time_rounded,
+                            size: 16,
+                            color: AppColors.textGrey,
+                          ),
                           const SizedBox(width: 6),
                           Text(
                             trip.timeLabel,
@@ -958,8 +994,11 @@ class _RepinLocationDialog extends StatelessWidget {
                       // Distance
                       Row(
                         children: [
-                          const Icon(Icons.location_on_rounded,
-                              size: 16, color: AppColors.textGrey),
+                          const Icon(
+                            Icons.location_on_rounded,
+                            size: 16,
+                            color: AppColors.textGrey,
+                          ),
                           const SizedBox(width: 6),
                           Text(
                             trip.distanceLabel,
@@ -996,7 +1035,8 @@ class _RepinLocationDialog extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: AppColors.border),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                     child: const Text(
@@ -1019,7 +1059,8 @@ class _RepinLocationDialog extends StatelessWidget {
                       backgroundColor: AppColors.primary,
                       foregroundColor: AppColors.white,
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       elevation: 0,
                     ),
@@ -1042,7 +1083,6 @@ class _RepinLocationDialog extends StatelessWidget {
   }
 }
 
-
 /// Full-screen modal showing past route details with View Route / View Map toggle.
 /// Tapping outside the modal (barrier) dismisses it.
 class _TransitRouteModal extends StatefulWidget {
@@ -1060,7 +1100,7 @@ class _TransitRouteModalState extends State<_TransitRouteModal> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: AppColors.white,
+      backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
       child: ConstrainedBox(
@@ -1075,10 +1115,12 @@ class _TransitRouteModalState extends State<_TransitRouteModal> {
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
               child: Container(
                 width: double.infinity,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 14,
+                ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFD4F5E0),
+                  color: AppColors.surfaceRaised,
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: const Center(
@@ -1133,7 +1175,7 @@ class _RouteMapToggle extends StatelessWidget {
     return Container(
       height: 40,
       decoration: BoxDecoration(
-        color: const Color(0xFFD4F5E0),
+        color: AppColors.surfaceRaised,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -1219,10 +1261,7 @@ class _RouteStepsView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           for (var i = 0; i < steps.length; i++) ...[
-            _StepNode(
-              step: steps[i],
-              isLast: i == steps.length - 1,
-            ),
+            _StepNode(step: steps[i], isLast: i == steps.length - 1),
           ],
           const SizedBox(height: 12),
           // Destination badge
@@ -1289,7 +1328,9 @@ class _StepNode extends StatelessWidget {
                 height: 20,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: step.isDestination ? AppColors.primary : AppColors.white,
+                  color: step.isDestination
+                      ? AppColors.primary
+                      : AppColors.white,
                   border: Border.all(
                     color: AppColors.primary,
                     width: step.isDestination ? 0 : 2.5,
@@ -1397,10 +1438,7 @@ class _StaticMapViewState extends State<_StaticMapView> {
 
     final geojson = jsonEncode({
       'type': 'Feature',
-      'geometry': {
-        'type': 'LineString',
-        'coordinates': widget.route.geometry,
-      },
+      'geometry': {'type': 'LineString', 'coordinates': widget.route.geometry},
       'properties': {},
     });
 
@@ -1425,20 +1463,22 @@ class _StaticMapViewState extends State<_StaticMapView> {
     if (map == null) return;
 
     final route = widget.route;
-    final minLng =
-        route.originLng < route.destLng ? route.originLng : route.destLng;
-    final maxLng =
-        route.originLng > route.destLng ? route.originLng : route.destLng;
-    final minLat =
-        route.originLat < route.destLat ? route.originLat : route.destLat;
-    final maxLat =
-        route.originLat > route.destLat ? route.originLat : route.destLat;
+    final minLng = route.originLng < route.destLng
+        ? route.originLng
+        : route.destLng;
+    final maxLng = route.originLng > route.destLng
+        ? route.originLng
+        : route.destLng;
+    final minLat = route.originLat < route.destLat
+        ? route.originLat
+        : route.destLat;
+    final maxLat = route.originLat > route.destLat
+        ? route.originLat
+        : route.destLat;
 
     final bounds = mapbox.CoordinateBounds(
-      southwest:
-          mapbox.Point(coordinates: mapbox.Position(minLng, minLat)),
-      northeast:
-          mapbox.Point(coordinates: mapbox.Position(maxLng, maxLat)),
+      southwest: mapbox.Point(coordinates: mapbox.Position(minLng, minLat)),
+      northeast: mapbox.Point(coordinates: mapbox.Position(maxLng, maxLat)),
       infiniteBounds: false,
     );
 
@@ -1487,6 +1527,8 @@ class _StaticMapViewState extends State<_StaticMapView> {
               height: 280,
               child: mapbox.MapWidget(
                 key: const ValueKey('transit-route-modal-map'),
+                // ignore: experimental_member_use
+                androidHostingMode: mapbox.AndroidPlatformViewHostingMode.TLHC_HC,
                 styleUri: mapbox.MapboxStyles.STANDARD,
                 onMapCreated: _onMapCreated,
                 onStyleLoadedListener: _onStyleLoaded,

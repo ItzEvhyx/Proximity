@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/asset_icon.dart';
+import '../../../../../core/widgets/primary_button.dart';
+import '../../../../../core/widgets/sheet_handle.dart';
 import '../../homescreen_map_renderer.dart';
 import 'maps_controller.dart';
 import 'pinned_trip.dart';
@@ -9,13 +11,22 @@ import 'pinned_trip.dart';
 /// Maps tab: the interactive Philippines map with a floating search bar and a
 /// draggable info card sitting on top of it (behind the navbar).
 class MapsTab extends StatelessWidget {
-  const MapsTab({super.key, this.onMapReady, this.controller});
+  const MapsTab({
+    super.key,
+    this.onMapReady,
+    this.controller,
+    this.active = true,
+  });
 
   /// Forwarded to the map so the shell knows when the map is ready to show.
   final VoidCallback? onMapReady;
 
   /// Shared maps state (search + selection). Drives the info/confirm card.
   final MapsController? controller;
+
+  /// Lets the native map pause its animated annotation work while another tab
+  /// is visible without destroying and reloading the map.
+  final bool active;
 
   @override
   Widget build(BuildContext context) {
@@ -27,6 +38,7 @@ class MapsTab extends StatelessWidget {
           child: HomescreenMapRenderer(
             onReady: onMapReady,
             controller: controller,
+            active: active,
           ),
         ),
         // The bottom card either shows past trips or, once a location is
@@ -55,8 +67,8 @@ class _BottomCard extends StatelessWidget {
         if (controller.hasPin) {
           return _ConfirmLocationCard(
             title: controller.pinned!.name,
-            subtitle: controller.pinned!.address ??
-                controller.pinned!.categoryLabel,
+            subtitle:
+                controller.pinned!.address ?? controller.pinned!.categoryLabel,
             locked: controller.locked,
             resolving: controller.resolvingPin,
             onConfirm: controller.confirmPin,
@@ -76,12 +88,12 @@ class _BottomCard extends StatelessWidget {
 }
 
 /// Bottom card shown when a location is pinned: the selected place with a
-/// full-width green "Confirm Location" pill. Sits just above the navbar.
+/// full-width monochrome CTA. Sits just above the navbar.
 class _ConfirmLocationCard extends StatelessWidget {
   const _ConfirmLocationCard({
     required this.title,
     required this.subtitle,
-    required this.locked, 
+    required this.locked,
     required this.resolving,
     required this.onConfirm,
     required this.onCancel,
@@ -107,7 +119,7 @@ class _ConfirmLocationCard extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
             decoration: BoxDecoration(
-              color: AppColors.white,
+              color: AppColors.surface,
               borderRadius: BorderRadius.circular(24),
               border: Border.all(color: AppColors.border, width: 1),
               boxShadow: const [
@@ -127,7 +139,7 @@ class _ConfirmLocationCard extends StatelessWidget {
                   children: [
                     const Icon(
                       Icons.location_on,
-                      color: AppColors.primary,
+                      color: AppColors.textPrimary,
                       size: 22,
                     ),
                     const SizedBox(width: 8),
@@ -141,7 +153,7 @@ class _ConfirmLocationCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               fontFamily: 'Poppins',
-                              color: AppColors.textDark,
+                              color: AppColors.textPrimary,
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
                               height: 1.15,
@@ -154,7 +166,7 @@ class _ConfirmLocationCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               fontFamily: 'Inter',
-                              color: AppColors.textGrey,
+                              color: AppColors.textSecondary,
                               fontSize: 12,
                               fontWeight: FontWeight.w400,
                             ),
@@ -169,7 +181,7 @@ class _ConfirmLocationCard extends StatelessWidget {
                         padding: EdgeInsets.only(left: 8),
                         child: Icon(
                           Icons.close_rounded,
-                          color: AppColors.textGrey,
+                          color: AppColors.textSecondary,
                           size: 22,
                         ),
                       ),
@@ -180,11 +192,9 @@ class _ConfirmLocationCard extends StatelessWidget {
                 Row(
                   children: [
                     Icon(
-                      locked
-                          ? Icons.lock_rounded
-                          : Icons.open_with_rounded,
+                      locked ? Icons.lock_rounded : Icons.open_with_rounded,
                       size: 14,
-                      color: AppColors.textGrey,
+                      color: AppColors.textSecondary,
                     ),
                     const SizedBox(width: 6),
                     Expanded(
@@ -194,7 +204,7 @@ class _ConfirmLocationCard extends StatelessWidget {
                             : 'Drag the pin to fine-tune the exact spot.',
                         style: const TextStyle(
                           fontFamily: 'Inter',
-                          color: AppColors.textGrey,
+                          color: AppColors.textSecondary,
                           fontSize: 11,
                           fontWeight: FontWeight.w400,
                         ),
@@ -233,27 +243,10 @@ class _ConfirmButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!locked) {
-      return Material(
-        color: AppColors.primary,
-        borderRadius: BorderRadius.circular(30),
-        child: InkWell(
-          onTap: onConfirm,
-          borderRadius: BorderRadius.circular(30),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(vertical: 15),
-            child: Center(
-              child: Text(
-                'Confirm Location',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  color: AppColors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-        ),
+      return PrimaryButton(
+        label: 'Confirm Location',
+        onPressed: onConfirm,
+        icon: Icons.check_rounded,
       );
     }
 
@@ -264,20 +257,23 @@ class _ConfirmButton extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 15),
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.12),
+              color: AppColors.surfaceRaised,
               borderRadius: BorderRadius.circular(30),
             ),
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.check_circle_rounded,
-                    color: AppColors.primary, size: 20),
+                Icon(
+                  Icons.check_circle_rounded,
+                  color: AppColors.textPrimary,
+                  size: 20,
+                ),
                 SizedBox(width: 8),
                 Text(
                   'Location Confirmed',
                   style: TextStyle(
                     fontFamily: 'Poppins',
-                    color: AppColors.primary,
+                    color: AppColors.textPrimary,
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                   ),
@@ -288,7 +284,7 @@ class _ConfirmButton extends StatelessWidget {
         ),
         const SizedBox(width: 10),
         Material(
-          color: AppColors.white,
+          color: AppColors.surfaceHigh,
           borderRadius: BorderRadius.circular(30),
           child: InkWell(
             onTap: onEdit,
@@ -303,7 +299,7 @@ class _ConfirmButton extends StatelessWidget {
                 'Edit',
                 style: TextStyle(
                   fontFamily: 'Poppins',
-                  color: AppColors.textDark,
+                  color: AppColors.textPrimary,
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                 ),
@@ -320,7 +316,12 @@ class _ConfirmButton extends StatelessWidget {
 /// can be dragged taller or shorter. Shows the user's recent pinned locations
 /// as "past trips" (the most recent [MapsController._maxHistory]).
 class _DraggableInfoCard extends StatelessWidget {
-  const _DraggableInfoCard({this.trips = const [], this.onDeleteTrip, this.onTapTrip, this.onReverseTrip});
+  const _DraggableInfoCard({
+    this.trips = const [],
+    this.onDeleteTrip,
+    this.onTapTrip,
+    this.onReverseTrip,
+  });
 
   final List<PinnedTrip> trips;
   final ValueChanged<PinnedTrip>? onDeleteTrip;
@@ -336,8 +337,8 @@ class _DraggableInfoCard extends StatelessWidget {
       builder: (context, scrollController) {
         return DecoratedBox(
           decoration: BoxDecoration(
-            color: AppColors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            color: AppColors.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
             border: Border.all(color: AppColors.border, width: 1),
             boxShadow: const [
               BoxShadow(
@@ -348,7 +349,7 @@ class _DraggableInfoCard extends StatelessWidget {
             ],
           ),
           child: ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
             child: SingleChildScrollView(
               controller: scrollController,
               physics: const AlwaysScrollableScrollPhysics(),
@@ -358,17 +359,7 @@ class _DraggableInfoCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Center(
-                      child: Container(
-                        width: 44,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: AppColors.border,
-                          borderRadius: BorderRadius.circular(3),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
+                    const SheetHandle(),
                     // Header row: "Recent Trips" on the left, bus icon on the right.
                     Row(
                       children: [
@@ -377,7 +368,7 @@ class _DraggableInfoCard extends StatelessWidget {
                             'Recent Trips',
                             style: TextStyle(
                               fontFamily: 'Poppins',
-                              color: AppColors.textDark,
+                              color: AppColors.textPrimary,
                               fontSize: 22,
                               fontWeight: FontWeight.w800,
                               height: 1.0,
@@ -386,14 +377,14 @@ class _DraggableInfoCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 12),
                         const AssetIcon(
-                          'public/assets/icons/bus_icon.png',
+                          'public/assets/icons/bus_icon.svg',
                           size: 30,
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
                     const Divider(
-                      color: AppColors.textGrey,
+                      color: AppColors.divider,
                       thickness: 1,
                       height: 1,
                     ),
@@ -407,7 +398,7 @@ class _DraggableInfoCard extends StatelessWidget {
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontFamily: 'Inter',
-                            color: AppColors.textGrey,
+                            color: AppColors.textSecondary,
                             fontSize: 13,
                             fontWeight: FontWeight.w400,
                           ),
@@ -416,7 +407,9 @@ class _DraggableInfoCard extends StatelessWidget {
                     else
                       for (final trip in trips) ...[
                         _TripRow(
-                          key: ValueKey('${trip.name}_${trip.pinnedAt.millisecondsSinceEpoch}'),
+                          key: ValueKey(
+                            '${trip.name}_${trip.pinnedAt.millisecondsSinceEpoch}',
+                          ),
                           trip: trip,
                           onDelete: onDeleteTrip == null
                               ? null
@@ -429,7 +422,7 @@ class _DraggableInfoCard extends StatelessWidget {
                               : () => onReverseTrip!(trip),
                         ),
                         const Divider(
-                          color: AppColors.textGrey,
+                          color: AppColors.textSecondary,
                           thickness: 1,
                           height: 1,
                         ),
@@ -451,7 +444,13 @@ class _DraggableInfoCard extends StatelessWidget {
 /// Deleting a trip plays a scale-down + fade "pop" before the row collapses
 /// and closes the gap, instead of just disappearing instantly.
 class _TripRow extends StatefulWidget {
-  const _TripRow({super.key, required this.trip, this.onDelete, this.onTap, this.onReverse});
+  const _TripRow({
+    super.key,
+    required this.trip,
+    this.onDelete,
+    this.onTap,
+    this.onReverse,
+  });
 
   final PinnedTrip trip;
   final VoidCallback? onDelete;
@@ -462,7 +461,8 @@ class _TripRow extends StatefulWidget {
   State<_TripRow> createState() => _TripRowState();
 }
 
-class _TripRowState extends State<_TripRow> with SingleTickerProviderStateMixin {
+class _TripRowState extends State<_TripRow>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _scale;
   late final Animation<double> _fade;
@@ -538,55 +538,62 @@ class _TripRowState extends State<_TripRow> with SingleTickerProviderStateMixin 
         onTap: widget.onTap,
         behavior: HitTestBehavior.opaque,
         child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.trip.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontFamily: 'Poppins',
-                      color: AppColors.textDark,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      height: 1.1,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.trip.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        color: AppColors.textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        height: 1.1,
+                      ),
                     ),
+                    const SizedBox(height: 6),
+                    _DetailLine(
+                      label: 'Date of Trip',
+                      value: widget.trip.dateLabel,
+                    ),
+                    _DetailLine(
+                      label: 'Time of Trip',
+                      value: widget.trip.timeLabel,
+                    ),
+                    _DetailLine(
+                      label: 'Distance',
+                      value: widget.trip.distanceLabel,
+                    ),
+                    _DetailLine(
+                      label: 'Starting Location',
+                      value: widget.trip.startLocationName ?? '-',
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Trash (upper-right) sits just above the reverse-trip button.
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _DeleteTripButton(
+                    onTap: widget.onDelete == null ? null : _handleDelete,
                   ),
-                  const SizedBox(height: 6),
-                  _DetailLine(label: 'Date of Trip', value: widget.trip.dateLabel),
-                  _DetailLine(label: 'Time of Trip', value: widget.trip.timeLabel),
-                  _DetailLine(label: 'Distance', value: widget.trip.distanceLabel),
-                  _DetailLine(
-                    label: 'Starting Location',
-                    value: widget.trip.startLocationName ?? '-',
-                  ),
+                  const SizedBox(height: 8),
+                  _ReverseTripButton(onTap: widget.onReverse),
                 ],
               ),
-            ),
-            const SizedBox(width: 12),
-            // Trash (upper-right) sits just above the reverse-trip button.
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _DeleteTripButton(
-                  onTap: widget.onDelete == null ? null : _handleDelete,
-                ),
-                const SizedBox(height: 8),
-                _ReverseTripButton(
-                  onTap: widget.onReverse,
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -601,7 +608,7 @@ class _DeleteTripButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.error.withValues(alpha: 0.12),
+      color: AppColors.surfaceHigh,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         onTap: onTap,
@@ -610,7 +617,7 @@ class _DeleteTripButton extends StatelessWidget {
           padding: EdgeInsets.all(8),
           child: Icon(
             Icons.delete_rounded,
-            color: AppColors.error,
+            color: AppColors.textPrimary,
             size: 20,
           ),
         ),
@@ -640,7 +647,10 @@ class _DetailLine extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontFamily: 'Inter',
-                color: AppColors.textGrey,
+                // A divider token is intentionally near-transparent; using
+                // it for a label made the trip metadata disappear on the
+                // dark history sheet.
+                color: AppColors.textMuted,
                 fontSize: 12,
                 fontWeight: FontWeight.w400,
               ),
@@ -654,7 +664,7 @@ class _DetailLine extends StatelessWidget {
             value,
             style: const TextStyle(
               fontFamily: 'Inter',
-              color: AppColors.textGrey,
+              color: AppColors.textSecondary,
               fontSize: 12,
               fontWeight: FontWeight.w400,
             ),
@@ -676,7 +686,7 @@ class _CircleDivider extends StatelessWidget {
       height: 4,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: AppColors.textGrey, width: 1),
+        border: Border.all(color: AppColors.textSecondary, width: 1),
       ),
     );
   }
@@ -691,7 +701,7 @@ class _ReverseTripButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.primary,
+      color: AppColors.surfaceHigh,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         onTap: onTap,
@@ -701,20 +711,20 @@ class _ReverseTripButton extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(   
+              const Text(
                 'Reverse Trip',
                 style: TextStyle(
                   fontFamily: 'Poppins',
-                  color: AppColors.white,
+                  color: AppColors.textPrimary,
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(width: 7),
               const AssetIcon(
-                'public/assets/icons/revert_icon.png',
+                'public/assets/icons/revert_icon.svg',
                 size: 15,
-                color: AppColors.white,
+                color: AppColors.textPrimary,
               ),
             ],
           ),

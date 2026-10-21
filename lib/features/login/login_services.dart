@@ -1,4 +1,5 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../core/database/settings_sync.dart';
 import '../../core/session/user_session.dart';
@@ -41,7 +42,10 @@ class LoginService {
     required String email,
     required String password,
   }) async {
-    final validation = LoginValidator.validate(email: email, password: password);
+    final validation = LoginValidator.validate(
+      email: email,
+      password: password,
+    );
     if (!validation.isValid) {
       return LoginResult(
         status: LoginStatus.invalidInput,
@@ -51,20 +55,10 @@ class LoginService {
 
     final cleanEmail = email.trim().toLowerCase();
 
-    if (!await _repo.emailExists(cleanEmail)) {
-      return const LoginResult(
-        status: LoginStatus.noAccount,
-        fieldErrors: {
-          LoginField.email:
-              'No existing account for this email. Please sign up.',
-        },
-      );
-    }
-
     try {
       await _repo.signInWithPassword(email: cleanEmail, password: password);
-    } on AuthException catch (e) {
-      if (e.message.toLowerCase().contains('email not confirmed')) {
+      if (!await _repo.isCurrentEmailVerified()) {
+        await _repo.signOut();
         return const LoginResult(
           status: LoginStatus.emailNotConfirmed,
           fieldErrors: {
@@ -72,11 +66,36 @@ class LoginService {
           },
         );
       }
-      return const LoginResult(
-        status: LoginStatus.wrongPassword,
-        fieldErrors: {
-          LoginField.password: 'Incorrect password. Please try again.',
-        },
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'user-not-found') {
+        return const LoginResult(
+          status: LoginStatus.noAccount,
+          fieldErrors: {
+            LoginField.email:
+                'No existing account for this email. Please sign up.',
+          },
+        );
+      }
+      if (e.code == 'user-disabled') {
+        return const LoginResult(
+          status: LoginStatus.emailNotConfirmed,
+          fieldErrors: {
+            LoginField.email:
+                'This account is unavailable. Please contact support.',
+          },
+        );
+      }
+      if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        return const LoginResult(
+          status: LoginStatus.wrongPassword,
+          fieldErrors: {
+            LoginField.password: 'Incorrect password. Please try again.',
+          },
+        );
+      }
+      return LoginResult(
+        status: LoginStatus.failure,
+        message: _emailSignInFailureMessage(e),
       );
     } catch (_) {
       return const LoginResult(
@@ -89,48 +108,43 @@ class LoginService {
     return const LoginResult(status: LoginStatus.success);
   }
 
-  /// Native Google sign-in (awaitable end-to-end). Requires that the chosen
-  /// email already has an account in our database; otherwise signs out and
-  /// rejects, since Google has no password to gate on.
+  /// Native Google sign-in. Firebase creates the Auth account for a new Google
+  /// identity, then we create its matching application profile.
   Future<LoginResult> loginWithGoogle() async {
     try {
-      final user = await _repo.signInWithGoogle();
-      if (user == null) {
+      final credential = await _repo.signInWithGoogle();
+      if (credential == null) {
         return const LoginResult(status: LoginStatus.googleCancelled);
       }
-
-      final email = user.email;
-      final exists =
-          email != null && await _repo.emailExists(email.toLowerCase());
-      if (!exists) {
-        await _repo.signOut();
+      final user = credential.user;
+      if (user == null) {
         return const LoginResult(
-          status: LoginStatus.googleNoAccount,
-          message: 'No existing account for this Google email. Please sign up.',
+          status: LoginStatus.failure,
+          message: 'Google did not return an account. Please try again.',
         );
+      }
+      if (credential.additionalUserInfo?.isNewUser ?? false) {
+        // Do not reject a valid first-time Google sign-in. This had made the
+        // Google button look broken for every new user.
+        try {
+          await _repo.ensureGoogleProfile(user);
+        } catch (_) {
+          // Authentication has succeeded; profile sync can retry later.
+        }
       }
       await _persistSession();
       return const LoginResult(status: LoginStatus.success);
-    } on AuthException catch (e) {
-      // Supabase throws this while trying to CREATE a brand-new auth user
-      // (a Google account that never signed up), so treat it as "no account".
-      final msg = e.message.toLowerCase();
-      if (e.code == 'unexpected_failure' ||
-          msg.contains('database error saving new user')) {
-        await _repo.signOut();
-        return const LoginResult(
-          status: LoginStatus.googleNoAccount,
-          message: 'No existing account for this Google email. Please sign up.',
-        );
-      }
-      return const LoginResult(
+    } on FirebaseAuthException catch (e) {
+      debugPrint('Google FirebaseAuthException: ${e.code}: ${e.message}');
+      return LoginResult(
         status: LoginStatus.failure,
-        message: 'Google sign-in failed. Please try again.',
+        message: _googleSignInFailureMessage(e),
       );
-    } catch (_) {
-      return const LoginResult(
+    } catch (e) {
+      debugPrint('Google sign-in exception: $e');
+      return LoginResult(
         status: LoginStatus.failure,
-        message: 'Google sign-in failed. Please try again.',
+        message: _googleSignInFailureMessage(e),
       );
     }
   }
@@ -144,5 +158,48 @@ class LoginService {
     // correct alarm/vibration/dismiss/zone preferences immediately.
     SettingsSync.instance.pullFromCloud();
   }
-}
 
+  String _emailSignInFailureMessage(FirebaseAuthException error) {
+    switch (error.code) {
+      case 'operation-not-allowed':
+        return 'Email/password sign-in is not enabled in Firebase yet.';
+      case 'network-request-failed':
+        return 'Could not reach Firebase. Check your internet connection.';
+      case 'too-many-requests':
+        return 'Too many attempts. Please wait a moment and try again.';
+      default:
+        return error.message ?? 'Sign-in failed. Please try again.';
+    }
+  }
+
+  String _googleSignInFailureMessage(Object error) {
+    final details = error.toString().toLowerCase();
+    if (details.contains('developer_error') ||
+        details.contains('api_exception: 10') ||
+        details.contains('status code: 10') ||
+        details.contains('error 10') ||
+        details.contains('10:')) {
+      return 'Google sign-in is not configured for this Android build. Add '
+          'this app\'s SHA fingerprint in Firebase, then download a new '
+          'google-services.json.';
+    }
+    if (error is FirebaseAuthException &&
+        error.code == 'operation-not-allowed') {
+      return 'Google sign-in is disabled in Firebase Authentication.';
+    }
+    if (error is FirebaseAuthException) {
+      if (error.code == 'account-exists-with-different-credential') {
+        return 'An account already exists for this email with a different '
+            'sign-in method.';
+      }
+      if (error.code == 'invalid-credential') {
+        return 'Google returned an invalid credential. Reinstall a fresh '
+            'build after updating google-services.json, then try again.';
+      }
+    }
+    if (details.contains('network')) {
+      return 'Could not reach Google. Check your internet connection.';
+    }
+    return 'Google sign-in failed. Please try again.';
+  }
+}

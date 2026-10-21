@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../core/network/network_service.dart';
 import '../../core/router/app_router.dart';
@@ -23,9 +24,7 @@ class _NetworkErrorScreenState extends State<NetworkErrorScreen> {
     setState(() => _checking = false);
 
     if (online) {
-      Navigator.of(context).pushReplacement(
-        AppRouter.afterSplashRoute(),
-      );
+      Navigator.of(context).pushReplacement(AppRouter.afterSplashRoute());
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -44,7 +43,7 @@ class _NetworkErrorScreenState extends State<NetworkErrorScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.white,
+      backgroundColor: AppColors.bg,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -52,8 +51,8 @@ class _NetworkErrorScreenState extends State<NetworkErrorScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Image.asset(
-                  'public/assets/images/no_network_img.png',
+                SvgPicture.asset(
+                  'public/assets/images/no_network_img.svg',
                   height: 210,
                   fit: BoxFit.contain,
                 ),
@@ -79,7 +78,8 @@ class _NetworkErrorScreenState extends State<NetworkErrorScreen> {
                     ),
                     children: [
                       TextSpan(
-                        text: 'Proximity needs a connection to track your '
+                        text:
+                            'Proximity needs a connection to track your '
                             'route and wake you at the right stop. ',
                       ),
                       TextSpan(
@@ -126,9 +126,9 @@ class _NetworkErrorScreenState extends State<NetworkErrorScreen> {
         onPressed: _checking ? null : _onTryAgain,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
-          foregroundColor: AppColors.white,
+          foregroundColor: AppColors.onLight,
           disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.6),
-          disabledForegroundColor: AppColors.white,
+          disabledForegroundColor: AppColors.onLight,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),

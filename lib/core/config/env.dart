@@ -15,24 +15,6 @@ class Env {
   /// Loads the env file into memory. Safe to call exactly once at start-up.
   static Future<void> load() => dotenv.load(fileName: fileName);
 
-  /// Supabase project URL (e.g. https://xxxx.supabase.co).
-  static String get supabaseUrl => _require('SUPABASE_URL');
-
-  /// Supabase publishable (client-safe) key used to initialise the SDK.
-  static String get supabasePublishableKey =>
-      _require('SUPABASE_PUBLISHABLE_KEY');
-
-  /// Gmail app password used to authenticate the SMTP sender.
-  static String get gmailAppPassword => _require('GMAIL_APP__PASSWORDS');
-
-  /// The Gmail address the [gmailAppPassword] belongs to; used as the SMTP
-  /// username and the "from" address on OTP emails.
-  static String get gmailSenderEmail => _require('GMAIL_SENDER_EMAIL');
-
-  /// Google Web OAuth client ID, used as the serverClientId for native Google
-  /// sign-in so Supabase can verify the returned ID token.
-  static String get googleWebClientId => _require('GOOGLE_WEB_CLIENT_ID');
-
   /// Mapbox public access token (starts with "pk."), passed to the Maps SDK
   /// at start-up so it can load map tiles.
   static String get mapboxPublicToken => _require('MAPBOX_PUBLIC_TOKEN');
@@ -51,17 +33,6 @@ class Env {
   /// Default Cloudinary folder/preset used when uploading new assets.
   static String get cloudinaryUploadPreset =>
       _require('CLOUDINARY_UPLOAD_PRESET_FOLDER');
-
-  /// Cloudinary API key — only required for authenticated Admin/Upload API
-  /// calls (not for public image delivery).
-  static String get cloudinaryApiKey => _require('CLOUDINARY_API_KEY');
-
-  /// Cloudinary API secret — only required for signed/authenticated API
-  /// calls. Keep this off the client for anything user-facing.
-  static String get cloudinaryApiSecret => _require('CLOUDINARY_API_SECRET');
-
-  /// Anthropic API key for Claude Haiku 4.5 — used for route planning.
-  static String get anthropicApiKey => _require('ANTHROPIC_API_KEY');
 
   /// Reads [key] from the loaded env, throwing a clear error if it is missing
   /// so misconfiguration surfaces immediately instead of failing later.

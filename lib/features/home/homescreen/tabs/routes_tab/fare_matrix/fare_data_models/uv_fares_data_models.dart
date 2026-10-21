@@ -24,20 +24,20 @@ enum UvExpressType { traditional, modernized }
 
 extension UvExpressTypeDisplay on UvExpressType {
   String get label => switch (this) {
-        UvExpressType.traditional => 'Traditional UV Express',
-        UvExpressType.modernized => 'Modernized UV Express',
-      };
+    UvExpressType.traditional => 'Traditional UV Express',
+    UvExpressType.modernized => 'Modernized UV Express',
+  };
 
   String get shortLabel => switch (this) {
-        UvExpressType.traditional => 'Traditional',
-        UvExpressType.modernized => 'Modernized',
-      };
+    UvExpressType.traditional => 'Traditional',
+    UvExpressType.modernized => 'Modernized',
+  };
 
   /// Chip label shown in the payment indicator selector.
   String get chipLabel => switch (this) {
-        UvExpressType.traditional => 'Traditional',
-        UvExpressType.modernized => 'Modernized',
-      };
+    UvExpressType.traditional => 'Traditional',
+    UvExpressType.modernized => 'Modernized',
+  };
 }
 
 /// Fare configuration for UV Express — flat per-km rate.
@@ -63,9 +63,9 @@ class UvExpressFareConfig {
   /// Converts to a [BusFareConfig] so we can reuse the same FareRateTable
   /// widget. UV Express is always flat-rate.
   BusFareConfig toBusFareConfig() => BusFareConfig(
-        flatPerKmRate: perKmRate,
-        discountMultiplier: discountMultiplier,
-      );
+    flatPerKmRate: perKmRate,
+    discountMultiplier: discountMultiplier,
+  );
 }
 
 /// Central access point for UV Express fare data.
@@ -74,21 +74,17 @@ class UvExpressFareData {
 
   // ── Traditional UV Express ─────────────────────────────────────────────
   // Flat rate: ₱2.40 per km
-  static const traditional = UvExpressFareConfig(
-    perKmRate: 2.40,
-  );
+  static const traditional = UvExpressFareConfig(perKmRate: 2.40);
 
   // ── Modernized UV Express ──────────────────────────────────────────────
   // Flat rate: ₱2.50 per km
-  static const modernized = UvExpressFareConfig(
-    perKmRate: 2.50,
-  );
+  static const modernized = UvExpressFareConfig(perKmRate: 2.50);
 
   /// Returns the fare config for a given UV Express type.
   static UvExpressFareConfig configFor(UvExpressType type) => switch (type) {
-        UvExpressType.traditional => traditional,
-        UvExpressType.modernized => modernized,
-      };
+    UvExpressType.traditional => traditional,
+    UvExpressType.modernized => modernized,
+  };
 
   /// "How It Works" bullet points for UV Express.
   static const List<HowItWorksPoint> howItWorks = [

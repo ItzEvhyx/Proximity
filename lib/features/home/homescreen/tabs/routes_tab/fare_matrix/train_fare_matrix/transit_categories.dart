@@ -13,10 +13,10 @@ enum FareCategory { lrt1, lrt2, mrt }
 
 /// Display label for a [FareCategory].
 String fareCategoryLabel(FareCategory c) => switch (c) {
-      FareCategory.lrt1 => 'LRT - 1',
-      FareCategory.lrt2 => 'LRT - 2',
-      FareCategory.mrt => 'MRT',
-    };
+  FareCategory.lrt1 => 'LRT - 1',
+  FareCategory.lrt2 => 'LRT - 2',
+  FareCategory.mrt => 'MRT',
+};
 
 /// Cloudinary delivery URL for a [FareCategory]'s train photo.
 String _categoryImageUrl(FareCategory c) {
@@ -72,21 +72,21 @@ class _Chip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = selected ? AppColors.white : AppColors.primary;
+    final fg = selected ? AppColors.onLight : AppColors.textSecondary;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary : AppColors.white,
+          color: selected ? AppColors.textPrimary : AppColors.surfaceRaised,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.primary, width: 1.2),
+          border: Border.all(color: AppColors.border),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             AssetIcon(
-              'public/assets/icons/train_icon.png',
+              'public/assets/icons/train_icon.svg',
               size: 16,
               color: fg,
             ),
@@ -150,8 +150,10 @@ class TransitInfoCard extends StatelessWidget {
                   );
                 },
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(20),
@@ -170,10 +172,7 @@ class TransitInfoCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          _TrainImage(
-            url: _categoryImageUrl(category),
-            load: loadImage,
-          ),
+          _TrainImage(url: _categoryImageUrl(category), load: loadImage),
         ],
       ),
     );
@@ -207,19 +206,25 @@ class _TrainImageState extends State<_TrainImage>
       child: AspectRatio(
         aspectRatio: 16 / 9,
         child: shouldLoad
-            ? CachedNetworkImage(
-                imageUrl: widget.url,
-                fit: BoxFit.cover,
-                memCacheWidth: 400,
-                fadeInDuration: Duration.zero,
-                fadeOutDuration: Duration.zero,
-                placeholder: (_, _) => const SkeletonBox(borderRadius: 0),
-                errorWidget: (_, _, _) => const ColoredBox(
-                  color: AppColors.surfaceMuted,
-                  child: Center(
-                    child: Icon(
-                      Icons.broken_image_outlined,
-                      color: AppColors.hintGrey,
+            ? ColorFiltered(
+                colorFilter: const ColorFilter.mode(
+                  Colors.grey,
+                  BlendMode.saturation,
+                ),
+                child: CachedNetworkImage(
+                  imageUrl: widget.url,
+                  fit: BoxFit.cover,
+                  memCacheWidth: 400,
+                  fadeInDuration: Duration.zero,
+                  fadeOutDuration: Duration.zero,
+                  placeholder: (_, _) => const SkeletonBox(borderRadius: 0),
+                  errorWidget: (_, _, _) => const ColoredBox(
+                    color: AppColors.surfaceMuted,
+                    child: Center(
+                      child: Icon(
+                        Icons.broken_image_outlined,
+                        color: AppColors.hintGrey,
+                      ),
                     ),
                   ),
                 ),

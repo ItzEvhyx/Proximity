@@ -22,17 +22,26 @@ import 'tabs/maps_tab/place_result.dart';
 /// the pin lets the user drag it (when unlocked); dragging moves the native
 /// annotation live and reverse-geocodes the spot.
 class HomescreenMapRenderer extends StatefulWidget {
-  const HomescreenMapRenderer({super.key, this.onReady, this.controller});
+  const HomescreenMapRenderer({
+    super.key,
+    this.onReady,
+    this.controller,
+    this.active = true,
+  });
 
   final VoidCallback? onReady;
   final MapsController? controller;
+
+  /// Whether the Maps tab is currently visible. Native map annotations are
+  /// paused while another tab is open so they do not consume frame budget in
+  /// the Settings or History screens.
+  final bool active;
 
   @override
   State<HomescreenMapRenderer> createState() => _HomescreenMapRendererState();
 }
 
-class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
-    with SingleTickerProviderStateMixin {
+class _HomescreenMapRendererState extends State<HomescreenMapRenderer> {
   // Philippines extents. Position is (longitude, latitude).
   static final Position _southwest = Position(116.0, 4.2);
   static final Position _northeast = Position(127.0, 21.5);
@@ -73,11 +82,12 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
   PointAnnotation? _pinAnnotation;
   final List<CircleAnnotation> _radarRings = [];
   CircleAnnotation? _radarDot;
-  AnimationController? _radarController;
+  Timer? _radarTimer;
+  DateTime? _radarStartedAt;
   bool _radarUpdating = false;
   bool _radarActive = false;
 
-  // ── Destination pin (red, no radar) ────────────────────────────────────
+  // ── Destination pin (white, no radar) ──────────────────────────────────
   PointAnnotation? _destPinAnnotation;
 
   static const int _radarRingCount = 3;
@@ -109,9 +119,25 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
   void dispose() {
     widget.controller?.removeListener(_onControllerChanged);
     _liveResolveTimer?.cancel();
-    _radarController?.dispose();
+    _radarTimer?.cancel();
     _buildingService.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant HomescreenMapRenderer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.active == widget.active) return;
+
+    if (!widget.active) {
+      _stopRadar();
+      return;
+    }
+
+    final place = _pinned;
+    if (place != null && place.isCurrentLocation && !_locked) {
+      _startRadar();
+    }
   }
 
   void _onControllerChanged() {
@@ -129,10 +155,10 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
   }
 
   CoordinateBounds get _phBounds => CoordinateBounds(
-        southwest: Point(coordinates: _southwest),
-        northeast: Point(coordinates: _northeast),
-        infiniteBounds: false,
-      );
+    southwest: Point(coordinates: _southwest),
+    northeast: Point(coordinates: _northeast),
+    infiniteBounds: false,
+  );
 
   Future<void> _onMapCreated(MapboxMap mapboxMap) async {
     _map = mapboxMap;
@@ -141,9 +167,10 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
     await mapboxMap.compass.updateSettings(CompassSettings(enabled: false));
     await mapboxMap.scaleBar.updateSettings(ScaleBarSettings(enabled: false));
 
-    // Our own red pin represents the user's location, so hide the puck.
-    await mapboxMap.location
-        .updateSettings(LocationComponentSettings(enabled: false));
+    // Our own monochrome pin represents the user's location, so hide the puck.
+    await mapboxMap.location.updateSettings(
+      LocationComponentSettings(enabled: false),
+    );
 
     final userPosition = await _requestUserLocation();
 
@@ -167,20 +194,26 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
       await mapboxMap.setCamera(
         CameraOptions(
           center: Point(
-            coordinates:
-                Position(userPosition.longitude, userPosition.latitude),
+            coordinates: Position(
+              userPosition.longitude,
+              userPosition.latitude,
+            ),
           ),
           zoom: _streetZoom,
         ),
       );
     } else {
       await mapboxMap.setCamera(
-        CameraOptions(center: Point(coordinates: _fallbackCenter), zoom: fitted.zoom),
+        CameraOptions(
+          center: Point(coordinates: _fallbackCenter),
+          zoom: fitted.zoom,
+        ),
       );
     }
 
     // Create the annotation managers up front (radar under the pin).
-    _radarManager ??= await mapboxMap.annotations.createCircleAnnotationManager();
+    _radarManager ??= await mapboxMap.annotations
+        .createCircleAnnotationManager();
     _pinManager ??= await mapboxMap.annotations.createPointAnnotationManager();
 
     _cameraReady = true;
@@ -195,7 +228,7 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
   }
 
   // ── Pin colors ─────────────────────────────────────────────────────────
-  Color get _pinColor => AppColors.primary;
+  Color get _pinColor => AppColors.white;
 
   /// Rasterizes (once, cached) the teardrop pin PNG in [color] at the device
   /// pixel ratio so the native image matches the intended on-screen size.
@@ -208,11 +241,11 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
 
-    // White core behind the glyph so the pin's hole reads as a white dot.
+    // The dark core keeps the hole visible when the pin itself is white.
     canvas.drawCircle(
       Offset(side / 2, side * 0.38),
       side * 0.14,
-      Paint()..color = AppColors.white,
+      Paint()..color = AppColors.bg,
     );
 
     final tp = TextPainter(textDirection: TextDirection.ltr);
@@ -228,8 +261,10 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
     tp.layout();
     tp.paint(canvas, Offset((side - tp.width) / 2, 0));
 
-    final image =
-        await recorder.endRecording().toImage(side.ceil(), side.ceil());
+    final image = await recorder.endRecording().toImage(
+      side.ceil(),
+      side.ceil(),
+    );
     final data = await image.toByteData(format: ui.ImageByteFormat.png);
     final bytes = data!.buffer.asUint8List();
     _pinBytesCache[key] = bytes;
@@ -238,8 +273,8 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
 
   // ── Show / move / clear the native marker ──────────────────────────────
 
-  /// Shows a marker for [place]. Searched destinations get a red pin and
-  /// animate the camera; the current-location pin (green + radar) is placed
+  /// Shows a marker for [place]. Searched destinations get a white pin and
+  /// animate the camera; the current-location pin (white + radar) is placed
   /// without moving the camera.
   Future<void> _showPin(PlaceResult place, {bool animateCamera = true}) async {
     final map = _map;
@@ -251,18 +286,23 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
     setState(() => _pinned = place);
 
     if (place.isCurrentLocation) {
-      // Green current-location pin with radar.
+      // White current-location pin with radar.
       await _placeNativeMarker(place);
       await _reprojectHitArea();
     } else {
-      // Red destination pin (separate annotation, no radar).
+      // A destination is selected: keep the user's marker static, but do not
+      // keep sending animated radar updates over the platform channel.
+      _stopRadar();
+      unawaited(_hideRadar());
+      // White destination pin (separate annotation, no radar).
       await _placeDestinationPin(place);
 
       if (map != null && animateCamera) {
         await map.flyTo(
           CameraOptions(
-            center:
-                Point(coordinates: Position(place.longitude, place.latitude)),
+            center: Point(
+              coordinates: Position(place.longitude, place.latitude),
+            ),
             zoom: _pinZoom,
           ),
           MapAnimationOptions(duration: 1200),
@@ -278,15 +318,16 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
     }
   }
 
-  /// Places or moves a red destination pin (no radar).
+  /// Places or moves a white destination pin (no radar).
   Future<void> _placeDestinationPin(PlaceResult place) async {
     final map = _map;
     if (map == null) return;
     _pinManager ??= await map.annotations.createPointAnnotationManager();
 
-    final geometry =
-        Point(coordinates: Position(place.longitude, place.latitude));
-    final bytes = await _pinBytesFor(AppColors.error);
+    final geometry = Point(
+      coordinates: Position(place.longitude, place.latitude),
+    );
+    final bytes = await _pinBytesFor(AppColors.white);
 
     try {
       final existing = _destPinAnnotation;
@@ -316,8 +357,9 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
     _pinManager ??= await map.annotations.createPointAnnotationManager();
     _radarManager ??= await map.annotations.createCircleAnnotationManager();
 
-    final geometry =
-        Point(coordinates: Position(place.longitude, place.latitude));
+    final geometry = Point(
+      coordinates: Position(place.longitude, place.latitude),
+    );
     final colorInt = _pinColor.toARGB32();
 
     try {
@@ -378,7 +420,9 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
         await _pinManager!.update(existing);
       }
 
-      _startRadar();
+      if (widget.active && !_locked && place.isCurrentLocation) {
+        _startRadar();
+      }
     } catch (e) {
       debugPrint('placeNativeMarker failed: $e');
     }
@@ -410,7 +454,8 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
         if (_pinAnnotation != null) await _pinManager?.delete(_pinAnnotation!);
       } catch (_) {}
       try {
-        if (_destPinAnnotation != null) await _pinManager?.delete(_destPinAnnotation!);
+        if (_destPinAnnotation != null)
+          await _pinManager?.delete(_destPinAnnotation!);
       } catch (_) {}
       try {
         await _radarManager?.deleteAll();
@@ -431,45 +476,41 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
 
   // ── Radar animation (native, matches the app's radar look) ─────────────
   void _startRadar() {
+    if (!widget.active) return;
     _radarActive = true;
-    _radarController ??= AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2600),
-    )..addListener(_tickRadar);
-    if (!_radarController!.isAnimating) {
-      _radarController!
-        ..reset()
-        ..repeat();
-    }
+    _radarStartedAt = DateTime.now();
+    _radarTimer ??= Timer.periodic(
+      const Duration(milliseconds: 160),
+      (_) => _tickRadar(),
+    );
   }
 
   void _stopRadar() {
     _radarActive = false;
-    _radarController?.stop();
+    _radarTimer?.cancel();
+    _radarTimer = null;
+    _radarStartedAt = null;
   }
 
-  /// Frame counter used to throttle radar updates (update every 3rd frame
-  /// instead of every frame — native annotation updates are expensive).
-  int _radarFrameCount = 0;
-
+  /// Native annotation mutations cross the Flutter/Android boundary. Updating
+  /// three rings at display-frame rate was the dominant source of UI jank, so
+  /// the radar intentionally runs at a modest 6 FPS instead.
   Future<void> _tickRadar() async {
     final manager = _radarManager;
-    final controller = _radarController;
+    final startedAt = _radarStartedAt;
     if (!_radarActive ||
+        !widget.active ||
         manager == null ||
-        controller == null ||
+        startedAt == null ||
         _radarRings.isEmpty ||
         _radarUpdating ||
         _dragging) {
       return;
     }
 
-    // Skip 2 out of every 3 frames to reduce native annotation churn.
-    _radarFrameCount++;
-    if (_radarFrameCount % 3 != 0) return;
-
     _radarUpdating = true;
-    final base = controller.value;
+    final base =
+        (DateTime.now().difference(startedAt).inMilliseconds % 2600) / 2600;
     for (var i = 0; i < _radarRings.length; i++) {
       final t = (base + i / _radarRings.length) % 1.0;
       final ring = _radarRings[i];
@@ -630,7 +671,7 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
           id: _highlightFillLayerId,
           sourceId: _highlightSourceId,
           slot: 'top',
-          fillColor: const Color(0xFFFFEB3B).toARGB32(),
+          fillColor: AppColors.textPrimary.toARGB32(),
           fillOpacity: 0.20,
         ),
       );
@@ -639,7 +680,7 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
           id: _highlightLineLayerId,
           sourceId: _highlightSourceId,
           slot: 'top',
-          lineColor: const Color(0xFFFFC400).toARGB32(),
+          lineColor: AppColors.mapRoad.toARGB32(),
           lineWidth: 3.5,
           lineOpacity: 0.95,
         ),
@@ -686,7 +727,12 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer>
       children: [
         MapWidget(
           key: const ValueKey('ph-map'),
-          styleUri: MapboxStyles.STANDARD,
+          // Texture-layer hybrid composition avoids the full-frame copy used
+          // by the plugin's legacy Virtual Display default on modern Android.
+          // It is markedly smoother when Flutter controls overlay the map.
+          // ignore: experimental_member_use
+          androidHostingMode: AndroidPlatformViewHostingMode.TLHC_HC,
+          styleUri: MapboxStyles.DARK,
           onMapCreated: _onMapCreated,
           onStyleLoadedListener: (_) {
             _styleLoaded = true;

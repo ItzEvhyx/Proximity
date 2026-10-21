@@ -43,8 +43,18 @@ class SavedRoute {
   /// Short date label: "12 Jul" or "12 Jul 2025".
   String get dateLabel {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     final d = searchedAt;
     final now = DateTime.now();
@@ -64,27 +74,29 @@ class SavedRoute {
       : '${destinationName.substring(0, 7)}…';
 
   Map<String, dynamic> toJson() => {
-        'originName': originName,
-        'destName': destinationName,
-        'originLat': originLat,
-        'originLng': originLng,
-        'destLat': destLat,
-        'destLng': destLng,
-        'eta': totalEta,
-        'dist': totalDistance,
-        'mode': travelMode,
-        'steps': steps
-            .map((s) => {
-                  'title': s.title,
-                  'eta': s.eta,
-                  'distance': s.distance,
-                  'description': s.description,
-                  'isDestination': s.isDestination,
-                })
-            .toList(),
-        'geometry': geometry,
-        'at': searchedAt.toIso8601String(),
-      };
+    'originName': originName,
+    'destName': destinationName,
+    'originLat': originLat,
+    'originLng': originLng,
+    'destLat': destLat,
+    'destLng': destLng,
+    'eta': totalEta,
+    'dist': totalDistance,
+    'mode': travelMode,
+    'steps': steps
+        .map(
+          (s) => {
+            'title': s.title,
+            'eta': s.eta,
+            'distance': s.distance,
+            'description': s.description,
+            'isDestination': s.isDestination,
+          },
+        )
+        .toList(),
+    'geometry': geometry,
+    'at': searchedAt.toIso8601String(),
+  };
 
   static SavedRoute? fromJson(Map<String, dynamic> json) {
     try {
@@ -93,20 +105,24 @@ class SavedRoute {
 
       final stepsJson = json['steps'] as List<dynamic>? ?? [];
       final steps = stepsJson
-          .map((s) => RouteStep(
-                title: s['title'] as String? ?? '',
-                eta: s['eta'] as String? ?? '',
-                distance: s['distance'] as String? ?? '',
-                description: s['description'] as String? ?? '',
-                isDestination: s['isDestination'] as bool? ?? false,
-              ))
+          .map(
+            (s) => RouteStep(
+              title: s['title'] as String? ?? '',
+              eta: s['eta'] as String? ?? '',
+              distance: s['distance'] as String? ?? '',
+              description: s['description'] as String? ?? '',
+              isDestination: s['isDestination'] as bool? ?? false,
+            ),
+          )
           .toList();
 
       final geometryJson = json['geometry'] as List<dynamic>? ?? [];
       final geometry = geometryJson
-          .map((coord) => (coord as List<dynamic>)
-              .map((c) => (c as num).toDouble())
-              .toList())
+          .map(
+            (coord) => (coord as List<dynamic>)
+                .map((c) => (c as num).toDouble())
+                .toList(),
+          )
           .toList();
 
       return SavedRoute(

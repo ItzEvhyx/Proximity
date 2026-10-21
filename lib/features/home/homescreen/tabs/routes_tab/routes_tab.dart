@@ -103,7 +103,8 @@ class ModeToggle extends StatelessWidget {
       return left;
     }
 
-    final totalWidth = (2 * _barPadding) +
+    final totalWidth =
+        (2 * _barPadding) +
         itemWidths.fold<double>(0, (sum, w) => sum + w) +
         ((_items.length - 1) * _spacing);
 
@@ -112,7 +113,7 @@ class ModeToggle extends StatelessWidget {
       height: _itemHeight + (2 * _barPadding),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.12),
+          color: AppColors.surfaceRaised,
           borderRadius: BorderRadius.circular(_radius),
         ),
         child: Stack(
@@ -128,7 +129,7 @@ class ModeToggle extends StatelessWidget {
               height: _itemHeight,
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: AppColors.white,
+                  color: AppColors.textPrimary,
                   borderRadius: BorderRadius.circular(_radius - 4),
                   boxShadow: const [
                     BoxShadow(
@@ -190,7 +191,7 @@ class _ToggleCell extends StatelessWidget {
           duration: duration,
           curve: curve,
           style: ModeToggle._labelStyle.copyWith(
-            color: selected ? AppColors.textDark : AppColors.primary,
+            color: selected ? AppColors.onLight : AppColors.textSecondary,
           ),
           child: Text(label),
         ),

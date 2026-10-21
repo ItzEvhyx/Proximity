@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "275865471718",
+    "project_id": "proximity-4fb3d",
+    "storage_bucket": "proximity-4fb3d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:275865471718:android:e273126ddb3625d0378927",
+        "android_client_info": {
+          "package_name": "com.example.proximity"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "275865471718-bobghck8pcf328r6fe28nt508278lgv4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.proximity",
+            "certificate_hash": "b150185af40edb46a9a998f8afa8309bfda2eaaa"
+          }
+        },
+        {
+          "client_id": "275865471718-7ilpndgp3bflbcft84h29m773g61bqhc.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB5T7iEDG80to4zVgRhNh55FLHtMeLFwkE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "275865471718-7ilpndgp3bflbcft84h29m773g61bqhc.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -134,8 +134,10 @@ class _SignUpCardState extends State<SignUpCard> {
       case OtpSendStatus.invalidInput:
         _showSnack('Please fix the highlighted fields.');
       case OtpSendStatus.alreadyExists:
-        setState(() => _fieldErrors[SignUpField.email] =
-            'An account with this email already exists.');
+        setState(
+          () => _fieldErrors[SignUpField.email] =
+              'An account with this email already exists.',
+        );
         _showSnack(result.message ?? 'Account already exists.');
       case OtpSendStatus.sendFailed:
         _showSnack(result.message ?? 'Could not send the verification email.');
@@ -160,7 +162,7 @@ class _SignUpCardState extends State<SignUpCard> {
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(
-        color: AppColors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       clipBehavior: Clip.antiAlias,
@@ -172,151 +174,154 @@ class _SignUpCardState extends State<SignUpCard> {
           children: [
             Expanded(
               child: SingleChildScrollView(
-          physics: const ClampingScrollPhysics(),
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          padding: const EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 26,
-            bottom: 8,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-            const Center(
-              child: Text(
-                'Get Started',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  color: AppColors.primary,
-                  fontSize: 32,
-                  fontWeight: FontWeight.w800,
+                physics: const ClampingScrollPhysics(),
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: const EdgeInsets.only(
+                  left: 24,
+                  right: 24,
+                  top: 26,
+                  bottom: 8,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Center(
+                      child: Text(
+                        'Get Started',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          color: AppColors.primary,
+                          fontSize: 32,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    // ── First / Last name row ─────────────────────────────────────
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _fieldLabel('First Name'),
+                              const SizedBox(height: 8),
+                              _buildTextField(
+                                controller: _firstNameController,
+                                hintText: 'Enter First name...',
+                                textCapitalization: TextCapitalization.words,
+                                errorText: _fieldErrors[SignUpField.firstName],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _fieldLabel('Last Name'),
+                              const SizedBox(height: 8),
+                              _buildTextField(
+                                controller: _lastNameController,
+                                hintText: 'Enter Last name...',
+                                textCapitalization: TextCapitalization.words,
+                                errorText: _fieldErrors[SignUpField.lastName],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    // ── Email ─────────────────────────────────────────────────────
+                    _fieldLabel('Email'),
+                    const SizedBox(height: 8),
+                    _buildTextField(
+                      controller: _emailController,
+                      hintText: 'Enter Email...',
+                      icon: Icons.mail_outline,
+                      keyboardType: TextInputType.emailAddress,
+                      errorText: _fieldErrors[SignUpField.email],
+                    ),
+                    const SizedBox(height: 16),
+                    // ── Password ──────────────────────────────────────────────────
+                    _fieldLabel('Password'),
+                    const SizedBox(height: 8),
+                    _buildTextField(
+                      controller: _passwordController,
+                      hintText: 'Enter Password...',
+                      icon: Icons.lock_outline,
+                      obscureText: _obscurePassword,
+                      errorText: _fieldErrors[SignUpField.password],
+                      inputFormatters: [
+                        FilteringTextInputFormatter.deny(RegExp(r'\s')),
+                        LengthLimitingTextInputFormatter(25),
+                      ],
+                      suffix: IconButton(
+                        splashRadius: 20,
+                        onPressed: () => setState(
+                          () => _obscurePassword = !_obscurePassword,
+                        ),
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                          color: AppColors.textDark,
+                        ),
+                      ),
+                    ),
+                    // ── Password requirements (appear while typing) ───────────────
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOutCubic,
+                      child: _showRequirements
+                          ? Padding(
+                              padding: const EdgeInsets.only(top: 12),
+                              child: PasswordRequirements(
+                                password: _passwordController.text,
+                              ),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                    const SizedBox(height: 16),
+                    // ── Confirm Password ──────────────────────────────────────────
+                    _fieldLabel('Confirm Password'),
+                    const SizedBox(height: 8),
+                    _buildTextField(
+                      controller: _confirmPasswordController,
+                      hintText: 'Confirm Password...',
+                      icon: Icons.lock_outline,
+                      obscureText: _obscureConfirm,
+                      errorText: _fieldErrors[SignUpField.confirmPassword],
+                      inputFormatters: [
+                        FilteringTextInputFormatter.deny(RegExp(r'\s')),
+                        LengthLimitingTextInputFormatter(25),
+                      ],
+                      suffix: IconButton(
+                        splashRadius: 20,
+                        onPressed: () =>
+                            setState(() => _obscureConfirm = !_obscureConfirm),
+                        icon: Icon(
+                          _obscureConfirm
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                          color: AppColors.textDark,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 22),
+                    _buildSignUpButton(),
+                  ],
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-            // ── First / Last name row ─────────────────────────────────────
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _fieldLabel('First Name'),
-                      const SizedBox(height: 8),
-                      _buildTextField(
-                        controller: _firstNameController,
-                        hintText: 'Enter First name...',
-                        textCapitalization: TextCapitalization.words,
-                        errorText: _fieldErrors[SignUpField.firstName],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _fieldLabel('Last Name'),
-                      const SizedBox(height: 8),
-                      _buildTextField(
-                        controller: _lastNameController,
-                        hintText: 'Enter Last name...',
-                        textCapitalization: TextCapitalization.words,
-                        errorText: _fieldErrors[SignUpField.lastName],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            // ── Email ─────────────────────────────────────────────────────
-            _fieldLabel('Email'),
-            const SizedBox(height: 8),
-            _buildTextField(
-              controller: _emailController,
-              hintText: 'Enter Email...',
-              icon: Icons.mail_outline,
-              keyboardType: TextInputType.emailAddress,
-              errorText: _fieldErrors[SignUpField.email],
-            ),
-            const SizedBox(height: 16),
-            // ── Password ──────────────────────────────────────────────────
-            _fieldLabel('Password'),
-            const SizedBox(height: 8),
-            _buildTextField(
-              controller: _passwordController,
-              hintText: 'Enter Password...',
-              icon: Icons.lock_outline,
-              obscureText: _obscurePassword,
-              errorText: _fieldErrors[SignUpField.password],
-              inputFormatters: [
-                FilteringTextInputFormatter.deny(RegExp(r'\s')),
-                LengthLimitingTextInputFormatter(25),
-              ],
-              suffix: IconButton(
-                splashRadius: 20,
-                onPressed: () =>
-                    setState(() => _obscurePassword = !_obscurePassword),
-                icon: Icon(
-                  _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                  color: AppColors.textDark,
-                ),
-              ),
-            ),
-            // ── Password requirements (appear while typing) ───────────────
-            AnimatedSize(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOutCubic,
-              child: _showRequirements
-                  ? Padding(
-                      padding: const EdgeInsets.only(top: 12),
-                      child: PasswordRequirements(
-                        password: _passwordController.text,
-                      ),
-                    )
-                  : const SizedBox.shrink(),
-            ),
-            const SizedBox(height: 16),
-            // ── Confirm Password ──────────────────────────────────────────
-            _fieldLabel('Confirm Password'),
-            const SizedBox(height: 8),
-            _buildTextField(
-              controller: _confirmPasswordController,
-              hintText: 'Confirm Password...',
-              icon: Icons.lock_outline,
-              obscureText: _obscureConfirm,
-              errorText: _fieldErrors[SignUpField.confirmPassword],
-              inputFormatters: [
-                FilteringTextInputFormatter.deny(RegExp(r'\s')),
-                LengthLimitingTextInputFormatter(25),
-              ],
-              suffix: IconButton(
-                splashRadius: 20,
-                onPressed: () =>
-                    setState(() => _obscureConfirm = !_obscureConfirm),
-                icon: Icon(
-                  _obscureConfirm ? Icons.visibility : Icons.visibility_off,
-                  color: AppColors.textDark,
-                ),
-              ),
-            ),
-            const SizedBox(height: 22),
-            _buildSignUpButton(),
-          ],
-        ),
-        ),
             ),
             // ── Bottom-left back button, pinned to the card's bottom edge ──
             Padding(
-              padding: EdgeInsets.only(
-                left: 16,
-                bottom: 8 + bottomPadding,
-              ),
+              padding: EdgeInsets.only(left: 16, bottom: 8 + bottomPadding),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: IconButton(
@@ -386,10 +391,14 @@ class _SignUpCardState extends State<SignUpCard> {
           color: AppColors.hintGrey,
           fontSize: 15,
         ),
-        prefixIcon:
-            icon != null ? Icon(icon, color: AppColors.textDark, size: 24) : null,
+        prefixIcon: icon != null
+            ? Icon(icon, color: AppColors.textDark, size: 24)
+            : null,
         suffixIcon: suffix,
-        contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 16,
+          horizontal: 12,
+        ),
         errorText: errorText,
         errorMaxLines: 2,
         errorStyle: const TextStyle(fontFamily: 'Inter', fontSize: 12),
@@ -410,9 +419,9 @@ class _SignUpCardState extends State<SignUpCard> {
         onPressed: _isSubmitting ? null : _onSignUpPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
-          foregroundColor: AppColors.white,
+          foregroundColor: AppColors.textPrimary,
           disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.6),
-          disabledForegroundColor: AppColors.white,
+          disabledForegroundColor: AppColors.textPrimary,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -439,5 +448,3 @@ class _SignUpCardState extends State<SignUpCard> {
     );
   }
 }
-
-

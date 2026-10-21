@@ -11,10 +11,10 @@ import 'package:proximity/features/home/homescreen/tabs/routes_tab/fare_matrix/t
 // ═══════════════════════════════════════════════════════════════════════════
 
 RailLine _toRailLine(FareCategory c) => switch (c) {
-      FareCategory.lrt1 => RailLine.lrt1,
-      FareCategory.lrt2 => RailLine.lrt2,
-      FareCategory.mrt => RailLine.mrt3,
-    };
+  FareCategory.lrt1 => RailLine.lrt1,
+  FareCategory.lrt2 => RailLine.lrt2,
+  FareCategory.mrt => RailLine.mrt3,
+};
 
 /// Returns the station name list for a [FareCategory] from the data model.
 List<String> stationsForCategory(FareCategory category) {
@@ -205,9 +205,9 @@ class _StationField extends StatelessWidget {
             height: 44,
             padding: const EdgeInsets.symmetric(horizontal: 14),
             decoration: BoxDecoration(
-              color: AppColors.white,
+              color: AppColors.surfaceHigh,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0x1F000000)),
+              border: Border.all(color: AppColors.border),
             ),
             child: Row(
               children: [
@@ -273,7 +273,7 @@ class _StationPickerModalState extends State<_StationPickerModal> {
     return Container(
       height: modalHeight,
       decoration: const BoxDecoration(
-        color: AppColors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
@@ -302,7 +302,7 @@ class _StationPickerModalState extends State<_StationPickerModal> {
             child: Row(
               children: [
                 const AssetIcon(
-                  'public/assets/icons/train_icon.png',
+                  'public/assets/icons/train_icon.svg',
                   size: 18,
                   color: AppColors.white,
                 ),
@@ -350,7 +350,9 @@ class _StationPickerModalState extends State<_StationPickerModal> {
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        vertical: 12, horizontal: 14),
+                      vertical: 12,
+                      horizontal: 14,
+                    ),
                     decoration: BoxDecoration(
                       border: Border(
                         bottom: BorderSide(
@@ -368,8 +370,8 @@ class _StationPickerModalState extends State<_StationPickerModal> {
                             shape: BoxShape.circle,
                             border: Border.all(
                               color: isSelected
-                                  ? AppColors.primary
-                                  : AppColors.hintGrey,
+                                  ? AppColors.textPrimary
+                                  : AppColors.textMuted,
                               width: isSelected ? 2 : 1.5,
                             ),
                           ),
@@ -380,7 +382,7 @@ class _StationPickerModalState extends State<_StationPickerModal> {
                                     height: 12,
                                     decoration: const BoxDecoration(
                                       shape: BoxShape.circle,
-                                      color: AppColors.primary,
+                                      color: AppColors.textPrimary,
                                     ),
                                   ),
                                 )
@@ -397,8 +399,8 @@ class _StationPickerModalState extends State<_StationPickerModal> {
                                   ? FontWeight.w600
                                   : FontWeight.w400,
                               color: isSelected
-                                  ? AppColors.primary
-                                  : AppColors.textDark,
+                                  ? AppColors.textPrimary
+                                  : AppColors.textSecondary,
                             ),
                           ),
                         ),
@@ -440,7 +442,7 @@ class _SwapButton extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             child: const AssetIcon(
-              'public/assets/icons/revert_icon.png',
+              'public/assets/icons/revert_icon.svg',
               size: 20,
               color: AppColors.white,
             ),
@@ -462,8 +464,6 @@ class _FareResult extends StatelessWidget {
   final FareType fareType;
   final FareCategory category;
 
-  static final Color _end = Color.lerp(AppColors.primary, Colors.black, 0.08)!;
-
   @override
   Widget build(BuildContext context) {
     // Format the fare display
@@ -479,14 +479,8 @@ class _FareResult extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: [AppColors.primary, _end],
-        ),
-        border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.35),
-        ),
+        gradient: AppColors.surfaceGradient,
+        border: Border.all(color: AppColors.border),
       ),
       child: Padding(
         padding: const EdgeInsets.all(18),
@@ -503,7 +497,7 @@ class _FareResult extends StatelessWidget {
                       fontFamily: 'Inter',
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
-                      color: AppColors.white.withValues(alpha: 0.75),
+                      color: AppColors.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -513,7 +507,7 @@ class _FareResult extends StatelessWidget {
                       fontFamily: 'Poppins',
                       fontWeight: FontWeight.w800,
                       fontSize: 32,
-                      color: AppColors.white,
+                      color: AppColors.textPrimary,
                     ),
                   ),
                 ],
@@ -524,7 +518,7 @@ class _FareResult extends StatelessWidget {
               style: TextStyle(
                 fontFamily: 'Inter',
                 fontSize: 13,
-                color: AppColors.white.withValues(alpha: 0.75),
+                color: AppColors.textSecondary,
               ),
             ),
           ],

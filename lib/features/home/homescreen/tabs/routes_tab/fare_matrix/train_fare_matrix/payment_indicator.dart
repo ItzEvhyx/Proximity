@@ -7,10 +7,10 @@ enum FareType { storedValue, singleJourney, discounted }
 
 /// Display label for a [FareType].
 String fareTypeLabel(FareType t) => switch (t) {
-      FareType.storedValue => 'Stored Value',
-      FareType.singleJourney => 'Single Journey',
-      FareType.discounted => 'Discounted 50%',
-    };
+  FareType.storedValue => 'Stored Value',
+  FareType.singleJourney => 'Single Journey',
+  FareType.discounted => 'Discounted 50%',
+};
 
 /// Pill-shaped segmented row for selecting fare type.
 /// No animations — instant color swap on tap via parent setState.
@@ -29,13 +29,19 @@ class PaymentIndicator extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.12),
+        color: AppColors.surfaceRaised,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         children: [
           for (final type in FareType.values)
-            Expanded(child: _Pill(type: type, selected: type == selected, onTap: () => onChanged(type))),
+            Expanded(
+              child: _Pill(
+                type: type,
+                selected: type == selected,
+                onTap: () => onChanged(type),
+              ),
+            ),
         ],
       ),
     );
@@ -60,7 +66,7 @@ class _Pill extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
         decoration: BoxDecoration(
-          color: selected ? AppColors.white : Colors.transparent,
+          color: selected ? AppColors.textPrimary : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
           boxShadow: selected
               ? const [
@@ -81,7 +87,7 @@ class _Pill extends StatelessWidget {
             fontSize: 11.5,
             fontWeight: FontWeight.w700,
             height: 1.2,
-            color: selected ? AppColors.textDark : AppColors.primary,
+            color: selected ? AppColors.onLight : AppColors.textSecondary,
           ),
         ),
       ),

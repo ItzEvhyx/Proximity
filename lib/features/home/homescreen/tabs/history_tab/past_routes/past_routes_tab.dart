@@ -79,17 +79,18 @@ class _PastRouteRow extends StatelessWidget {
             width: _circleSize,
             child: Column(
               children: [
-                Expanded(
-                  child: _DashedVerticalLine(visible: !isFirst),
-                ),
+                Expanded(child: _DashedVerticalLine(visible: !isFirst)),
                 // Circle node with date number
                 Container(
                   width: _circleSize,
                   height: _circleSize,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AppColors.white,
-                    border: Border.all(color: AppColors.primary, width: 3),
+                    color: AppColors.surfaceHigh,
+                    border: Border.all(
+                      color: AppColors.textSecondary,
+                      width: 2,
+                    ),
                   ),
                   alignment: Alignment.center,
                   child: Text(
@@ -98,13 +99,11 @@ class _PastRouteRow extends StatelessWidget {
                       fontFamily: 'Poppins',
                       fontSize: 14,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.textDark,
+                      color: AppColors.textPrimary,
                     ),
                   ),
                 ),
-                Expanded(
-                  child: _DashedVerticalLine(visible: !isLast),
-                ),
+                Expanded(child: _DashedVerticalLine(visible: !isLast)),
               ],
             ),
           ),
@@ -145,7 +144,7 @@ class _DashedVerticalPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = AppColors.primary
+      ..color = AppColors.textMuted
       ..strokeWidth = 3
       ..strokeCap = StrokeCap.round;
 
@@ -176,7 +175,7 @@ class _RouteCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: AppColors.surfaceRaised,
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(14),
           bottomLeft: Radius.circular(14),
@@ -198,7 +197,7 @@ class _RouteCard extends StatelessWidget {
             children: [
               const Icon(
                 Icons.location_on,
-                color: Color(0xFFE53935),
+                color: AppColors.textPrimary,
                 size: 18,
               ),
               const SizedBox(width: 4),
@@ -209,13 +208,13 @@ class _RouteCard extends StatelessWidget {
                     fontFamily: 'Poppins',
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textDark,
+                    color: AppColors.textPrimary,
                   ),
                 ),
               ),
               const Icon(
                 Icons.arrow_forward_rounded,
-                color: AppColors.textDark,
+                color: AppColors.textPrimary,
                 size: 16,
               ),
               const SizedBox(width: 4),
@@ -226,13 +225,13 @@ class _RouteCard extends StatelessWidget {
                     fontFamily: 'Poppins',
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textDark,
+                    color: AppColors.textPrimary,
                   ),
                 ),
               ),
               const Icon(
                 Icons.location_on,
-                color: AppColors.primary,
+                color: AppColors.textSecondary,
                 size: 18,
               ),
             ],
@@ -248,7 +247,7 @@ class _RouteCard extends StatelessWidget {
             children: [
               const Icon(
                 Icons.calendar_today_rounded,
-                color: AppColors.textDark,
+                color: AppColors.textPrimary,
                 size: 12,
               ),
               const SizedBox(width: 5),
@@ -258,12 +257,15 @@ class _RouteCard extends StatelessWidget {
                   fontFamily: 'Poppins',
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textDark,
+                  color: AppColors.textPrimary,
                 ),
               ),
               const Spacer(),
-              const Icon(Icons.access_time_rounded,
-                  size: 10, color: AppColors.textGrey),
+              const Icon(
+                Icons.access_time_rounded,
+                size: 10,
+                color: AppColors.textSecondary,
+              ),
               const SizedBox(width: 3),
               Text(
                 route.totalEta,
@@ -271,7 +273,7 @@ class _RouteCard extends StatelessWidget {
                   fontFamily: 'Inter',
                   fontSize: 9,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.textGrey,
+                  color: AppColors.textSecondary,
                 ),
               ),
               const SizedBox(width: 6),
@@ -280,12 +282,15 @@ class _RouteCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textGrey,
+                  color: AppColors.textSecondary,
                 ),
               ),
               const SizedBox(width: 6),
-              const Icon(Icons.location_on_rounded,
-                  size: 10, color: AppColors.primary),
+              const Icon(
+                Icons.location_on_rounded,
+                size: 10,
+                color: AppColors.textSecondary,
+              ),
               const SizedBox(width: 3),
               Text(
                 route.totalDistance,
@@ -293,7 +298,7 @@ class _RouteCard extends StatelessWidget {
                   fontFamily: 'Inter',
                   fontSize: 9,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.textGrey,
+                  color: AppColors.textSecondary,
                 ),
               ),
             ],
@@ -320,7 +325,7 @@ class _DashedHorizontalPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = AppColors.primary
+      ..color = AppColors.textMuted
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
 

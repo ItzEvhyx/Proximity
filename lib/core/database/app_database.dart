@@ -100,11 +100,10 @@ class AppDatabase {
   /// Sets a setting value (insert or replace).
   Future<void> setSetting(String key, String value) async {
     final db = await database;
-    await db.insert(
-      tableSettings,
-      {'key': key, 'value': value},
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await db.insert(tableSettings, {
+      'key': key,
+      'value': value,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   /// Gets all settings as a Map.
@@ -112,8 +111,7 @@ class AppDatabase {
     final db = await database;
     final rows = await db.query(tableSettings);
     return {
-      for (final row in rows)
-        row['key'] as String: row['value'] as String,
+      for (final row in rows) row['key'] as String: row['value'] as String,
     };
   }
 
@@ -122,11 +120,10 @@ class AppDatabase {
     final db = await database;
     await db.transaction((txn) async {
       for (final entry in settings.entries) {
-        await txn.insert(
-          tableSettings,
-          {'key': entry.key, 'value': entry.value},
-          conflictAlgorithm: ConflictAlgorithm.replace,
-        );
+        await txn.insert(tableSettings, {
+          'key': entry.key,
+          'value': entry.value,
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
       }
     });
   }
@@ -175,7 +172,7 @@ class AppDatabase {
   }
 
   /// Replaces all trips with the given list (used for sync from SharedPrefs
-  /// or Supabase).
+  /// or Firestore).
   Future<void> replaceAllTrips(List<Map<String, dynamic>> trips) async {
     final db = await database;
     await db.transaction((txn) async {
@@ -199,10 +196,6 @@ class AppDatabase {
     );
     if (rows.isEmpty) return; // Fewer than max trips, nothing to trim.
     final cutoff = rows.first['pinned_at'] as String;
-    await db.delete(
-      tableTrips,
-      where: 'pinned_at < ?',
-      whereArgs: [cutoff],
-    );
+    await db.delete(tableTrips, where: 'pinned_at < ?', whereArgs: [cutoff]);
   }
 }

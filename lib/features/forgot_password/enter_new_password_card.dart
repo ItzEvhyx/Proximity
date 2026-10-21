@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/otp_dialogs.dart';
@@ -88,7 +89,8 @@ class _EnterNewPasswordCardState extends State<EnterNewPasswordCard> {
         await showOtpSuccessDialog(
           context,
           title: 'Password Reset Successful',
-          message: 'Your password has been updated. You can now log in with '
+          message:
+              'Your password has been updated. You can now log in with '
               'your new password.',
         );
         widget.onConfirmed?.call();
@@ -122,7 +124,7 @@ class _EnterNewPasswordCardState extends State<EnterNewPasswordCard> {
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(
-        color: AppColors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       clipBehavior: Clip.antiAlias,
@@ -147,8 +149,8 @@ class _EnterNewPasswordCardState extends State<EnterNewPasswordCard> {
                   children: [
                     // ── Lock illustration (reused) ────────────────────────
                     Center(
-                      child: Image.asset(
-                        'public/assets/images/forgot_lock_img.png',
+                      child: SvgPicture.asset(
+                        'public/assets/images/forgot_lock_img.svg',
                         height: 140,
                         fit: BoxFit.contain,
                       ),
@@ -184,8 +186,8 @@ class _EnterNewPasswordCardState extends State<EnterNewPasswordCard> {
                       controller: _passwordController,
                       hintText: 'Enter New Password...',
                       obscure: _obscurePassword,
-                      onToggle: () => setState(
-                          () => _obscurePassword = !_obscurePassword),
+                      onToggle: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
                       errorText: _passwordError,
                     ),
                     // Live password requirements (appear while typing).
@@ -287,8 +289,11 @@ class _EnterNewPasswordCardState extends State<EnterNewPasswordCard> {
           color: AppColors.hintGrey,
           fontSize: 15,
         ),
-        prefixIcon:
-            const Icon(Icons.lock_outline, color: AppColors.textDark, size: 24),
+        prefixIcon: const Icon(
+          Icons.lock_outline,
+          color: AppColors.textDark,
+          size: 24,
+        ),
         suffixIcon: IconButton(
           splashRadius: 20,
           onPressed: onToggle,
@@ -297,7 +302,10 @@ class _EnterNewPasswordCardState extends State<EnterNewPasswordCard> {
             color: AppColors.textDark,
           ),
         ),
-        contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 16,
+          horizontal: 12,
+        ),
         errorText: errorText,
         errorMaxLines: 2,
         errorStyle: const TextStyle(fontFamily: 'Inter', fontSize: 12),
@@ -318,9 +326,9 @@ class _EnterNewPasswordCardState extends State<EnterNewPasswordCard> {
         onPressed: _isBusy ? null : _onConfirm,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
-          foregroundColor: AppColors.white,
+          foregroundColor: AppColors.textPrimary,
           disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.6),
-          disabledForegroundColor: AppColors.white,
+          disabledForegroundColor: AppColors.textPrimary,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),

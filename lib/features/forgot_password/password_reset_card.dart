@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/otp_dialogs.dart';
@@ -48,8 +49,7 @@ class _PasswordResetCardState extends State<PasswordResetCard> {
   @override
   void initState() {
     super.initState();
-    _otpControllers =
-        List.generate(_otpLength, (_) => TextEditingController());
+    _otpControllers = List.generate(_otpLength, (_) => TextEditingController());
     _otpFocusNodes = List.generate(_otpLength, (_) => FocusNode());
   }
 
@@ -95,7 +95,8 @@ class _PasswordResetCardState extends State<PasswordResetCard> {
         await showOtpSuccessDialog(
           context,
           title: 'Verification Successful',
-          message: 'Your identity has been verified. '
+          message:
+              'Your identity has been verified. '
               'You can now set a new password.',
         );
         widget.onConfirmed?.call();
@@ -170,8 +171,8 @@ class _PasswordResetCardState extends State<PasswordResetCard> {
                   children: [
                     // ── Mailbox illustration ──────────────────────────────
                     Center(
-                      child: Image.asset(
-                        'public/assets/images/forgot_mailbox_img.png',
+                      child: SvgPicture.asset(
+                        'public/assets/images/forgot_mailbox_img.svg',
                         height: 150,
                         fit: BoxFit.contain,
                       ),
@@ -207,7 +208,8 @@ class _PasswordResetCardState extends State<PasswordResetCard> {
                             ),
                           ),
                           const TextSpan(
-                            text: ' to verify your identity and reset your '
+                            text:
+                                ' to verify your identity and reset your '
                                 'password.',
                           ),
                         ],
@@ -226,10 +228,7 @@ class _PasswordResetCardState extends State<PasswordResetCard> {
             ),
             // ── Bottom-left back button, pinned to the card's bottom edge ──
             Padding(
-              padding: EdgeInsets.only(
-                left: 16,
-                bottom: 8 + bottomPadding,
-              ),
+              padding: EdgeInsets.only(left: 16, bottom: 8 + bottomPadding),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: IconButton(
@@ -323,9 +322,9 @@ class _PasswordResetCardState extends State<PasswordResetCard> {
         onPressed: _isBusy ? null : _onConfirm,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
-          foregroundColor: AppColors.white,
+          foregroundColor: AppColors.textPrimary,
           disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.6),
-          disabledForegroundColor: AppColors.white,
+          disabledForegroundColor: AppColors.textPrimary,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),

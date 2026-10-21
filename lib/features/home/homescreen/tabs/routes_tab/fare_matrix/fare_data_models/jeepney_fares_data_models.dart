@@ -28,20 +28,20 @@ enum JeepneyType { traditional, modern }
 
 extension JeepneyTypeDisplay on JeepneyType {
   String get label => switch (this) {
-        JeepneyType.traditional => 'Traditional Jeepney',
-        JeepneyType.modern => 'Modern Jeepney',
-      };
+    JeepneyType.traditional => 'Traditional Jeepney',
+    JeepneyType.modern => 'Modern Jeepney',
+  };
 
   String get shortLabel => switch (this) {
-        JeepneyType.traditional => 'Traditional',
-        JeepneyType.modern => 'Modern',
-      };
+    JeepneyType.traditional => 'Traditional',
+    JeepneyType.modern => 'Modern',
+  };
 
   /// Chip label shown in the payment indicator selector.
   String get chipLabel => switch (this) {
-        JeepneyType.traditional => 'Traditional',
-        JeepneyType.modern => 'Modernized',
-      };
+    JeepneyType.traditional => 'Traditional',
+    JeepneyType.modern => 'Modernized',
+  };
 }
 
 /// Fare configuration for a jeepney type.
@@ -81,11 +81,11 @@ class JeepneyFareConfig {
 
   /// Converts to a [BusFareConfig] for use with the shared FareRateTable.
   BusFareConfig toBusFareConfig() => BusFareConfig(
-        baseFare: baseFare,
-        baseDistanceKm: baseDistanceKm,
-        perKmRate: perKmRate,
-        discountMultiplier: discountedBaseFare / baseFare,
-      );
+    baseFare: baseFare,
+    baseDistanceKm: baseDistanceKm,
+    perKmRate: perKmRate,
+    discountMultiplier: discountedBaseFare / baseFare,
+  );
 }
 
 /// Central access point for jeepney fare data.
@@ -116,9 +116,9 @@ class JeepneyFareData {
 
   /// Returns the fare config for a given jeepney type.
   static JeepneyFareConfig configFor(JeepneyType type) => switch (type) {
-        JeepneyType.traditional => traditional,
-        JeepneyType.modern => modern,
-      };
+    JeepneyType.traditional => traditional,
+    JeepneyType.modern => modern,
+  };
 
   /// "How It Works" bullet points for Jeepney transit.
   static const List<HowItWorksPoint> howItWorks = [

@@ -10,12 +10,14 @@ import '../../../core/global_services/vibration_service.dart';
 import '../../../core/global_services/volume_service.dart';
 import '../../../core/shared_prefs/shared_prefs.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/asset_icon.dart';
 
 // ── Sound assets (same as dismiss settings) ──────────────────────────────────
 
 const _soundAssets = {
   'default_alarm': 'public/assets/audio/default_alarm.mp3',
-  'birds_chirping': 'public/assets/audio/calming alarms/birds_chirping_alarm.mp3',
+  'birds_chirping':
+      'public/assets/audio/calming alarms/birds_chirping_alarm.mp3',
   'life_core': 'public/assets/audio/calming alarms/life_core_alarm.mp3',
   'piano': 'public/assets/audio/calming alarms/piano_alarm.mp3',
   'air_raid': 'public/assets/audio/intense alarms/air_raid_salarm.mp3',
@@ -107,7 +109,7 @@ class _AlarmDismissalScreenState extends State<AlarmDismissalScreen> {
     return PopScope(
       canPop: false, // Prevent back button — must dismiss properly.
       child: Scaffold(
-        backgroundColor: AppColors.primary,
+        backgroundColor: AppColors.bg,
         body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -123,10 +125,9 @@ class _AlarmDismissalScreenState extends State<AlarmDismissalScreen> {
                     color: AppColors.white.withValues(alpha: 0.2),
                   ),
                   child: Center(
-                    child: Image.asset(
-                      'public/assets/icons/alarm_icon.png',
-                      width: 44,
-                      height: 44,
+                    child: const AssetIcon(
+                      'public/assets/icons/alarm_icon.svg',
+                      size: 44,
                       color: AppColors.white,
                     ),
                   ),
@@ -282,7 +283,8 @@ class _SlideDismissState extends State<_SlideDismiss> {
                 left: 4 + _dragX,
                 child: GestureDetector(
                   onHorizontalDragUpdate: (d) => setState(
-                      () => _dragX = (_dragX + d.delta.dx).clamp(0.0, _maxDrag)),
+                    () => _dragX = (_dragX + d.delta.dx).clamp(0.0, _maxDrag),
+                  ),
                   onHorizontalDragEnd: (_) {
                     if (_dragX >= _maxDrag * 0.85) {
                       widget.onDismissed();
@@ -297,8 +299,11 @@ class _SlideDismissState extends State<_SlideDismiss> {
                       borderRadius: BorderRadius.circular(22),
                     ),
                     child: const Center(
-                      child: Icon(Icons.double_arrow_rounded,
-                          color: AppColors.primary, size: 24),
+                      child: Icon(
+                        Icons.double_arrow_rounded,
+                        color: AppColors.primary,
+                        size: 24,
+                      ),
                     ),
                   ),
                 ),
@@ -338,8 +343,9 @@ class _ShakeDismissState extends State<_ShakeDismiss> {
   void _startListening() {
     _shakeCount = 0;
     _accelSub = accelerometerEventStream().listen((event) {
-      final mag =
-          sqrt(event.x * event.x + event.y * event.y + event.z * event.z);
+      final mag = sqrt(
+        event.x * event.x + event.y * event.y + event.z * event.z,
+      );
       if (mag > _shakeThreshold) {
         final now = DateTime.now();
         if (now.difference(_lastShake).inMilliseconds > 300) {
@@ -502,21 +508,27 @@ class _SolveDismissState extends State<_SolveDismiss>
         children: [
           _NumBox(value: _numA.toString()),
           const SizedBox(width: 10),
-          Text(_operator,
-              style: const TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.white)),
+          Text(
+            _operator,
+            style: const TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: AppColors.white,
+            ),
+          ),
           const SizedBox(width: 10),
           _NumBox(value: _numB.toString()),
           const SizedBox(width: 10),
-          const Text('=',
-              style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.white)),
+          const Text(
+            '=',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: AppColors.white,
+            ),
+          ),
           const SizedBox(width: 10),
           SizedBox(
             width: 56,
@@ -538,10 +550,11 @@ class _SolveDismissState extends State<_SolveDismiss>
                   LengthLimitingTextInputFormatter(4),
                 ],
                 style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.white),
+                  fontFamily: 'Poppins',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.white,
+                ),
                 decoration: const InputDecoration(
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.zero,
@@ -573,12 +586,15 @@ class _NumBox extends StatelessWidget {
         ),
       ),
       child: Center(
-        child: Text(value,
-            style: const TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: AppColors.white)),
+        child: Text(
+          value,
+          style: const TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: AppColors.white,
+          ),
+        ),
       ),
     );
   }

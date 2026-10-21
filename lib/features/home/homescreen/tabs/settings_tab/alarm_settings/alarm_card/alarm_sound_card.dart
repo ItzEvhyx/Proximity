@@ -2,13 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 
 import '../../../../../../../core/shared_prefs/shared_prefs.dart';
-import '../../../../../../../core/supabase/supabase_client.dart';
+import '../../../../../../../core/firebase/firebase_client.dart';
 import '../../../../../../../core/theme/app_colors.dart';
 import '../../../../../../../core/widgets/asset_icon.dart';
 
 /// Data model for an alarm sound option.
 class _AlarmOption {
-  const _AlarmOption({required this.key, required this.label, required this.asset});
+  const _AlarmOption({
+    required this.key,
+    required this.label,
+    required this.asset,
+  });
 
   /// Unique key stored in prefs/DB (e.g. 'default_alarm').
   final String key;
@@ -82,25 +86,21 @@ const _intenseOptions = [
 final _categories = [
   const _AlarmCategory(
     title: 'Standard',
-    icon: 'public/assets/icons/alarm_clock_icon.png',
+    icon: 'public/assets/icons/alarm_icon.svg',
     options: [_standardOption],
     expandable: false,
   ),
   const _AlarmCategory(
     title: 'Calming',
-    icon: 'public/assets/icons/calming_icon.png',
+    icon: 'public/assets/icons/calming_icon.svg',
     options: _calmingOptions,
   ),
   const _AlarmCategory(
     title: 'Intense',
-    icon: 'public/assets/icons/comic_fx_icon.png',
+    icon: 'public/assets/icons/alarm_icon.svg',
     options: _intenseOptions,
   ),
-  const _AlarmCategory(
-    title: 'Custom Alarms',
-    icon: '',
-    options: [],
-  ),
+  const _AlarmCategory(title: 'Custom Alarms', icon: '', options: []),
 ];
 
 /// Shows the alarm sound picker as a bottom sheet modal.
@@ -159,9 +159,12 @@ class _AlarmSoundPickerSheetState extends State<_AlarmSoundPickerSheet> {
 
   Future<void> _onSelect(_AlarmOption option) async {
     // Deselect: if tapping the already-selected sound, fall back to default.
-    final effectiveKey =
-        (_selected == option.key) ? _standardOption.key : option.key;
-    final effectiveOption = (_selected == option.key) ? _standardOption : option;
+    final effectiveKey = (_selected == option.key)
+        ? _standardOption.key
+        : option.key;
+    final effectiveOption = (_selected == option.key)
+        ? _standardOption
+        : option;
 
     setState(() => _selected = effectiveKey);
 
@@ -178,12 +181,8 @@ class _AlarmSoundPickerSheetState extends State<_AlarmSoundPickerSheet> {
   }
 
   Future<void> _saveToDatabase(String key) async {
-    final userId = supabase.auth.currentUser?.id;
-    if (userId == null) return;
     try {
-      await supabase
-          .from('profiles')
-          .update({'alarm_sound': key}).eq('id', userId);
+      await updateCurrentProfile({'alarm_sound': key});
     } catch (_) {}
   }
 
@@ -248,14 +247,16 @@ class _AlarmSoundPickerSheetState extends State<_AlarmSoundPickerSheet> {
               shrinkWrap: true,
               padding: EdgeInsets.fromLTRB(20, 0, 20, bottomPadding + 24),
               itemCount: _categories.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
               itemBuilder: (_, index) {
                 final cat = _categories[index];
                 return _CategoryCard(
                   category: cat,
                   expanded: _expandedIndex == index,
                   selected: _selected,
-                  onToggle: cat.expandable ? () => _toggleCategory(index) : null,
+                  onToggle: cat.expandable
+                      ? () => _toggleCategory(index)
+                      : null,
                   onSelect: _onSelect,
                 );
               },
@@ -307,8 +308,8 @@ class _CategoryCard extends StatelessWidget {
             onTap: isStandard
                 ? () => onSelect(category.options.first)
                 : isCustom
-                    ? null
-                    : onToggle,
+                ? null
+                : onToggle,
             borderRadius: BorderRadius.circular(16),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -327,7 +328,11 @@ class _CategoryCard extends StatelessWidget {
                       ),
                     )
                   else
-                    AssetIcon(category.icon, size: 28, color: AppColors.primary),
+                    AssetIcon(
+                      category.icon,
+                      size: 28,
+                      color: AppColors.primary,
+                    ),
                   const SizedBox(width: 12),
                   // Title
                   Expanded(
@@ -366,7 +371,11 @@ class _CategoryCard extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Divider(height: 1, thickness: 1, color: AppColors.border),
+                  const Divider(
+                    height: 1,
+                    thickness: 1,
+                    color: AppColors.border,
+                  ),
                   for (final option in category.options)
                     _OptionTile(
                       option: option,

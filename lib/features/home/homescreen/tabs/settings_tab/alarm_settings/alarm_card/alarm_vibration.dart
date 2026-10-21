@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../../../../core/global_services/vibration_service.dart';
 import '../../../../../../../core/shared_prefs/shared_prefs.dart';
-import '../../../../../../../core/supabase/supabase_client.dart';
+import '../../../../../../../core/firebase/firebase_client.dart';
 import '../../../../../../../core/theme/app_colors.dart';
 
 /// Shows the vibration intensity picker as a bottom sheet modal.
@@ -94,12 +94,8 @@ class _VibrationPickerSheetState extends State<_VibrationPickerSheet> {
   }
 
   Future<void> _saveToDatabase(String key) async {
-    final userId = supabase.auth.currentUser?.id;
-    if (userId == null) return;
     try {
-      await supabase
-          .from('profiles')
-          .update({'vibration_intensity': key}).eq('id', userId);
+      await updateCurrentProfile({'vibration_intensity': key});
     } catch (_) {}
   }
 

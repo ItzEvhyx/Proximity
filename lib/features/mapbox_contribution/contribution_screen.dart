@@ -65,10 +65,15 @@ class _ContributionScreenState extends State<ContributionScreen> {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Image.asset(
-                    'public/assets/icons/mapbox_logo.png',
-                    height: 58,
-                    fit: BoxFit.contain,
+                  const Text(
+                    'mapbox',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      color: AppColors.white,
+                      fontSize: 34,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -1.4,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   const Text(

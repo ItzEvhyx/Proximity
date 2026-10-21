@@ -7,16 +7,13 @@ import '../../../../../../../core/theme/app_colors.dart';
 import 'transit_categories.dart';
 import 'view_table_screen.dart';
 
-/// Green card showing the rail transit route map image + interchange info.
+/// Dark card showing the rail transit route map image + interchange info.
 /// The route map image is fetched from Cloudinary. Tapping it opens a
 /// full-screen pinch-zoom modal.
 class TransitRouteMap extends StatelessWidget {
   const TransitRouteMap({super.key, required this.category});
 
   final FareCategory category;
-
-  static final Color _gradientEnd =
-      Color.lerp(AppColors.primary, Colors.black, 0.12)!;
 
   void _openMapModal(BuildContext context, String imageUrl) {
     showDialog(
@@ -38,12 +35,8 @@ class TransitRouteMap extends StatelessWidget {
         DecoratedBox(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
-            gradient: LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: [AppColors.primary, _gradientEnd],
-            ),
-            border: Border.all(color: const Color(0x10000000)),
+            gradient: AppColors.surfaceGradient,
+            border: Border.all(color: AppColors.border),
             boxShadow: const [
               BoxShadow(
                 color: Color(0x14000000),
@@ -76,14 +69,15 @@ class TransitRouteMap extends StatelessWidget {
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (_) =>
-                                ViewTableScreen(category: category),
+                            builder: (_) => ViewTableScreen(category: category),
                           ),
                         );
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 8),
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(14),
@@ -107,21 +101,29 @@ class TransitRouteMap extends StatelessWidget {
                   onTap: () => _openMapModal(context, imageUrl),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(14),
-                    child: CachedNetworkImage(
-                      imageUrl: imageUrl,
-                      width: double.infinity,
-                      fit: BoxFit.contain,
-                      memCacheWidth: 600,
-                      fadeInDuration: Duration.zero,
-                      fadeOutDuration: Duration.zero,
-                      placeholder: (_, _) =>
-                          const SkeletonBox(height: 200, borderRadius: 0),
-                      errorWidget: (_, _, _) => Container(
-                        height: 200,
-                        color: AppColors.surfaceMuted,
-                        child: const Center(
-                          child: Icon(Icons.broken_image_outlined,
-                              color: AppColors.hintGrey),
+                    child: ColorFiltered(
+                      colorFilter: const ColorFilter.mode(
+                        Colors.grey,
+                        BlendMode.saturation,
+                      ),
+                      child: CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        width: double.infinity,
+                        fit: BoxFit.contain,
+                        memCacheWidth: 600,
+                        fadeInDuration: Duration.zero,
+                        fadeOutDuration: Duration.zero,
+                        placeholder: (_, _) =>
+                            const SkeletonBox(height: 200, borderRadius: 0),
+                        errorWidget: (_, _, _) => Container(
+                          height: 200,
+                          color: AppColors.surfaceMuted,
+                          child: const Center(
+                            child: Icon(
+                              Icons.broken_image_outlined,
+                              color: AppColors.hintGrey,
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -172,9 +174,9 @@ class _InterchangeInfo extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: AppColors.surfaceRaised,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0x10000000)),
+        border: Border.all(color: AppColors.border),
         boxShadow: const [
           BoxShadow(
             color: Color(0x14000000),
@@ -189,7 +191,11 @@ class _InterchangeInfo extends StatelessWidget {
         children: [
           const Row(
             children: [
-              Icon(Icons.swap_horiz_rounded, size: 20, color: AppColors.primary),
+              Icon(
+                Icons.swap_horiz_rounded,
+                size: 20,
+                color: AppColors.textSecondary,
+              ),
               SizedBox(width: 8),
               Text(
                 'Interchange Stations',
@@ -252,7 +258,11 @@ class _InterchangeRow extends StatelessWidget {
         ),
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 6),
-          child: Icon(Icons.sync_alt_rounded, size: 16, color: AppColors.primary),
+          child: Icon(
+            Icons.sync_alt_rounded,
+            size: 16,
+            color: AppColors.textSecondary,
+          ),
         ),
         _LineBadge(label: interchange.lineB),
         const SizedBox(width: 6),
@@ -283,7 +293,7 @@ class _LineBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.12),
+        color: AppColors.surfaceHigh,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
@@ -292,7 +302,7 @@ class _LineBadge extends StatelessWidget {
           fontFamily: 'Poppins',
           fontWeight: FontWeight.w700,
           fontSize: 10,
-          color: AppColors.primary,
+          color: AppColors.textPrimary,
         ),
       ),
     );
@@ -328,8 +338,11 @@ class _RouteMapModal extends StatelessWidget {
                 child: CircularProgressIndicator(color: AppColors.primary),
               ),
               errorWidget: (_, _, _) => const Center(
-                child: Icon(Icons.broken_image_outlined,
-                    color: AppColors.hintGrey, size: 48),
+                child: Icon(
+                  Icons.broken_image_outlined,
+                  color: AppColors.hintGrey,
+                  size: 48,
+                ),
               ),
             ),
           ),

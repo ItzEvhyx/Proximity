@@ -302,7 +302,9 @@ class MapsSearchService {
       // Build one from the most specific address components available.
       final parts = <String?>[
         address?['house_number']?.toString(),
-        (address?['road'] ?? address?['pedestrian'] ?? address?['neighbourhood'])
+        (address?['road'] ??
+                address?['pedestrian'] ??
+                address?['neighbourhood'])
             ?.toString(),
       ].where((p) => p != null && p.isNotEmpty).cast<String>().toList();
       name = parts.isNotEmpty
@@ -338,8 +340,9 @@ class MapsSearchService {
       'session_token': sessionToken,
       'language': 'en',
     };
-    final uri =
-        Uri.parse('$_searchBoxRetrieve/$id').replace(queryParameters: params);
+    final uri = Uri.parse(
+      '$_searchBoxRetrieve/$id',
+    ).replace(queryParameters: params);
     final response = await _client.get(uri);
     if (response.statusCode != 200) {
       debugPrint('Retrieve failed ${response.statusCode}: ${response.body}');
@@ -349,8 +352,9 @@ class MapsSearchService {
     final body = jsonDecode(response.body) as Map<String, dynamic>;
     final features = (body['features'] as List?) ?? const [];
     if (features.isEmpty) throw MapsSearchException('Location not found.');
-    final resolved =
-        _placeFromSearchBox(features.first as Map<String, dynamic>);
+    final resolved = _placeFromSearchBox(
+      features.first as Map<String, dynamic>,
+    );
     if (resolved == null) throw MapsSearchException('Location not found.');
 
     // Keep the suggestion's (usually nicer) name/address, take the coordinates.
@@ -368,8 +372,7 @@ class MapsSearchService {
     final id = s['mapbox_id'] as String?;
     if (name == null || name.isEmpty || id == null) return null;
 
-    final fullAddress =
-        (s['full_address'] ?? s['place_formatted'])?.toString();
+    final fullAddress = (s['full_address'] ?? s['place_formatted'])?.toString();
     final poiCategories = s['poi_category'] as List?;
     final category = poiCategories != null && poiCategories.isNotEmpty
         ? poiCategories.first.toString()
@@ -544,8 +547,8 @@ class MapsSearchService {
     final name = (props['name'] ?? props['address'] ?? 'Selected location')
         .toString()
         .trim();
-    final fullAddress =
-        (props['full_address'] ?? props['place_formatted'])?.toString();
+    final fullAddress = (props['full_address'] ?? props['place_formatted'])
+        ?.toString();
     final category = props['feature_type'] as String?;
 
     // Prefer the routable point (on a road) so the pin can't land on a roof.
@@ -591,11 +594,12 @@ class MapsSearchService {
     if (name == null || name.isEmpty) return null;
 
     // `type` is the specific label ("Restaurant"); `maki`/`class` are broader.
-    final category = (props['type'] ??
-            props['maki'] ??
-            props['class'] ??
-            props['category_en'])
-        ?.toString();
+    final category =
+        (props['type'] ??
+                props['maki'] ??
+                props['class'] ??
+                props['category_en'])
+            ?.toString();
 
     return PlaceResult(
       name: name,
@@ -614,8 +618,8 @@ class MapsSearchService {
     final name = (props['name'] as String?)?.trim();
     if (name == null || name.isEmpty) return null;
 
-    final fullAddress =
-        (props['full_address'] ?? props['place_formatted'])?.toString();
+    final fullAddress = (props['full_address'] ?? props['place_formatted'])
+        ?.toString();
 
     // Prefer a specific POI category, then the maki icon, then feature type.
     final poiCategories = props['poi_category'] as List?;
@@ -641,8 +645,8 @@ class MapsSearchService {
     final name = (props['name'] as String?)?.trim();
     if (name == null || name.isEmpty) return null;
 
-    final fullAddress =
-        (props['full_address'] ?? props['place_formatted'])?.toString();
+    final fullAddress = (props['full_address'] ?? props['place_formatted'])
+        ?.toString();
     final category = props['feature_type'] as String?;
 
     return PlaceResult(

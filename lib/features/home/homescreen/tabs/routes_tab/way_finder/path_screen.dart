@@ -102,10 +102,7 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
     // Build GeoJSON LineString from geometry coordinates.
     final geojson = jsonEncode({
       'type': 'Feature',
-      'geometry': {
-        'type': 'LineString',
-        'coordinates': widget.geometry,
-      },
+      'geometry': {'type': 'LineString', 'coordinates': widget.geometry},
       'properties': {},
     });
 
@@ -114,9 +111,7 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
         ? [2.0, 2.0]
         : <double>[]; // solid for drive/transit
 
-    await map.style.addSource(
-      GeoJsonSource(id: _routeSourceId, data: geojson),
-    );
+    await map.style.addSource(GeoJsonSource(id: _routeSourceId, data: geojson));
 
     await map.style.addLayer(
       LineLayer(
@@ -142,14 +137,17 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
     final maxLng = widget.originLng > widget.destLng
         ? widget.originLng
         : widget.destLng;
-    final minLat =
-        widget.originLat < widget.destLat ? widget.originLat : widget.destLat;
-    final maxLat =
-        widget.originLat > widget.destLat ? widget.originLat : widget.destLat;
+    final minLat = widget.originLat < widget.destLat
+        ? widget.originLat
+        : widget.destLat;
+    final maxLat = widget.originLat > widget.destLat
+        ? widget.originLat
+        : widget.destLat;
 
     final bounds = CoordinateBounds(
       southwest: Point(coordinates: Position(minLng, minLat)),
-      northeast: Point(coordinates: Position(maxLng, maxLat)), infiniteBounds: false,
+      northeast: Point(coordinates: Position(maxLng, maxLat)),
+      infiniteBounds: false,
     );
 
     final camera = await map.cameraForCoordinateBounds(
@@ -161,8 +159,10 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
       null,
     );
 
-    await map.flyTo(camera,
-        MapAnimationOptions(duration: 800, startDelay: 200));
+    await map.flyTo(
+      camera,
+      MapAnimationOptions(duration: 800, startDelay: 200),
+    );
   }
 
   @override
@@ -182,13 +182,15 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
     };
 
     return Scaffold(
-      backgroundColor: AppColors.white,
+      backgroundColor: AppColors.bg,
       body: Stack(
         children: [
           // ── Map ────────────────────────────────────────────────────────
           Positioned.fill(
             child: MapWidget(
               key: const ValueKey('path-map'),
+              // ignore: experimental_member_use
+              androidHostingMode: AndroidPlatformViewHostingMode.TLHC_HC,
               styleUri: MapboxStyles.STANDARD,
               onMapCreated: _onMapCreated,
               onStyleLoadedListener: _onStyleLoaded,
@@ -290,7 +292,9 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
                   // Distance badge
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.primary,
                       borderRadius: BorderRadius.circular(12),

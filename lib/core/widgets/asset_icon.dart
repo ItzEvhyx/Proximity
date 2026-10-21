@@ -1,22 +1,13 @@
-import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
-/// A performance-optimized asset image for icons and small images.
+import '../theme/app_colors.dart';
+
+/// Reusable SVG icon that can be tinted for the surface it sits on.
 ///
-/// The problem this solves: `Image.asset` decodes the source PNG at its
-/// FULL native resolution (e.g. 300×300) into a raw RGBA bitmap, then scales
-/// it down for display. A 300×300 icon shown at 24×24 still costs the full
-/// 300×300 decode + memory (~360 KB in RAM), and that cost multiplies across
-/// every icon on screen — causing jank during scroll.
-///
-/// [AssetIcon] passes `cacheWidth`/`cacheHeight` to the decoder so the image
-/// is downsampled to the display size BEFORE the bitmap is created. To keep
-/// icons crisp on high-DPI screens, the cache dimensions are multiplied by
-/// the device pixel ratio (e.g. a 24 logical-px icon on a 3x screen decodes
-/// at 72×72 instead of 300×300).
-///
-/// Use this anywhere a fixed-size asset icon is rendered.
+/// The app's symbols are vector assets, so they remain crisp at every size.
+/// White is the default for the dark interface; callers provide a dark tint
+/// when an icon is placed on a light selection pill.
 class AssetIcon extends StatelessWidget {
   const AssetIcon(
     this.asset, {
@@ -48,20 +39,15 @@ class AssetIcon extends StatelessWidget {
     final w = width ?? size;
     final h = height ?? size;
 
-    final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ??
-        ui.PlatformDispatcher.instance.views.first.devicePixelRatio;
-    final cacheW = (w * dpr).ceil();
-    final cacheH = (h * dpr).ceil();
-
-    return Image.asset(
+    return SvgPicture.asset(
       asset,
       width: w,
       height: h,
       fit: fit,
-      color: color,
-      cacheWidth: cacheW,
-      cacheHeight: cacheH,
-      gaplessPlayback: true,
+      colorFilter: ColorFilter.mode(
+        color ?? AppColors.textPrimary,
+        BlendMode.srcIn,
+      ),
     );
   }
 }

@@ -4,45 +4,37 @@ import '../../../../../../core/theme/app_colors.dart';
 import '../../../../../../core/widgets/asset_icon.dart';
 
 /// All transit types available in the fare matrix.
-enum TransitType {
-  lrt1,
-  lrt2,
-  mrt,
-  jeepney,
-  bus,
-  uvExpress,
-  tricycle,
-}
+enum TransitType { lrt1, lrt2, mrt, jeepney, bus, uvExpress, tricycle }
 
 /// Whether a [TransitType] is a train/rail transit.
 bool isTrainTransit(TransitType t) => switch (t) {
-      TransitType.lrt1 => true,
-      TransitType.lrt2 => true,
-      TransitType.mrt => true,
-      _ => false,
-    };
+  TransitType.lrt1 => true,
+  TransitType.lrt2 => true,
+  TransitType.mrt => true,
+  _ => false,
+};
 
 /// Display label for a [TransitType].
 String transitTypeLabel(TransitType t) => switch (t) {
-      TransitType.lrt1 => 'LRT-1',
-      TransitType.lrt2 => 'LRT-2',
-      TransitType.mrt => 'MRT',
-      TransitType.jeepney => 'Jeepney',
-      TransitType.bus => 'Bus',
-      TransitType.uvExpress => 'UV Express',
-      TransitType.tricycle => 'Tricycle',
-    };
+  TransitType.lrt1 => 'LRT-1',
+  TransitType.lrt2 => 'LRT-2',
+  TransitType.mrt => 'MRT',
+  TransitType.jeepney => 'Jeepney',
+  TransitType.bus => 'Bus',
+  TransitType.uvExpress => 'UV Express',
+  TransitType.tricycle => 'Tricycle',
+};
 
 /// Icon asset path for a [TransitType].
 String transitTypeIcon(TransitType t) => switch (t) {
-      TransitType.lrt1 => 'public/assets/icons/train_icon.png',
-      TransitType.lrt2 => 'public/assets/icons/train_icon.png',
-      TransitType.mrt => 'public/assets/icons/train_icon.png',
-      TransitType.jeepney => 'public/assets/icons/jeepney_icon.png',
-      TransitType.bus => 'public/assets/icons/bus_icon.png',
-      TransitType.uvExpress => 'public/assets/icons/uv_express_icon.png',
-      TransitType.tricycle => 'public/assets/icons/motorcycle_icon.png',
-    };
+  TransitType.lrt1 => 'public/assets/icons/train_icon.svg',
+  TransitType.lrt2 => 'public/assets/icons/train_icon.svg',
+  TransitType.mrt => 'public/assets/icons/train_icon.svg',
+  TransitType.jeepney => 'public/assets/icons/jeepney_icon.svg',
+  TransitType.bus => 'public/assets/icons/bus_icon.svg',
+  TransitType.uvExpress => 'public/assets/icons/uv_express_icon.svg',
+  TransitType.tricycle => 'public/assets/icons/motorcycle_icon.svg',
+};
 
 /// Horizontally scrollable row of transit type chips.
 /// Shows all 7 transit types. No animations — instant state swap.
@@ -90,24 +82,20 @@ class _TransitChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = selected ? AppColors.white : AppColors.primary;
+    final fg = selected ? AppColors.onLight : AppColors.textSecondary;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary : AppColors.white,
+          color: selected ? AppColors.textPrimary : AppColors.surfaceRaised,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.primary, width: 1.2),
+          border: Border.all(color: AppColors.border, width: 1),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            AssetIcon(
-              transitTypeIcon(type),
-              size: 16,
-              color: fg,
-            ),
+            AssetIcon(transitTypeIcon(type), size: 16, color: fg),
             const SizedBox(width: 6),
             Text(
               transitTypeLabel(type),

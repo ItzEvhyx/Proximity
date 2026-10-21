@@ -36,10 +36,7 @@ class RouteNodesWidget extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         for (var i = 0; i < nodes.length; i++)
-          _NodeItem(
-            node: nodes[i],
-            isLast: i == nodes.length - 1,
-          ),
+          _NodeItem(node: nodes[i], isLast: i == nodes.length - 1),
         // Destination badge at the bottom
         const SizedBox(height: 8),
         const _DestinationBadge(),
@@ -186,11 +183,7 @@ class _DestinationBadge extends StatelessWidget {
         child: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.location_on,
-              size: 16,
-              color: AppColors.primary,
-            ),
+            Icon(Icons.location_on, size: 16, color: AppColors.primary),
             SizedBox(width: 4),
             Text(
               'Destination',

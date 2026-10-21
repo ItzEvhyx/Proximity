@@ -7,11 +7,11 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../../core/config/env.dart';
-import '../../../../../core/supabase/supabase_client.dart';
+import '../../../../../core/firebase/firebase_client.dart';
 import 'circle_crop_modal.dart';
 
 /// Handles profile avatar picking, cropping, uploading to Cloudinary, and
-/// persisting the URL in the Supabase `profiles` table.
+/// persisting the URL in the Firestore `profiles` collection.
 class ProfileAvatarService {
   ProfileAvatarService._();
 
@@ -20,7 +20,6 @@ class ProfileAvatarService {
   final ImagePicker _picker = ImagePicker();
 
   static const String _columnAvatarUrl = 'avatar_url';
-  static const String _tableProfiles = 'profiles';
 
   /// Allowed image extensions for profile pictures.
   static const List<String> _allowedExtensions = ['jpg', 'jpeg', 'png'];
@@ -68,11 +67,13 @@ class ProfileAvatarService {
     final request = http.MultipartRequest('POST', uri)
       ..fields['upload_preset'] = uploadPreset
       ..fields['folder'] = 'profile_avatars'
-      ..files.add(http.MultipartFile.fromBytes(
-        'file',
-        imageBytes,
-        filename: 'avatar.png',
-      ));
+      ..files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          imageBytes,
+          filename: 'avatar.png',
+        ),
+      );
 
     final streamed = await request.send();
     final response = await http.Response.fromStream(streamed);
@@ -87,25 +88,19 @@ class ProfileAvatarService {
 
   /// Persists [avatarUrl] in the `profiles` row for the current user.
   Future<void> saveAvatarUrl(String avatarUrl) async {
-    final userId = supabase.auth.currentUser?.id;
-    if (userId == null) throw Exception('No authenticated user');
-
-    await supabase
-        .from(_tableProfiles)
-        .update({_columnAvatarUrl: avatarUrl}).eq('id', userId);
+    if (firebaseAuth.currentUser == null) {
+      throw Exception('No authenticated user');
+    }
+    await updateCurrentProfile({_columnAvatarUrl: avatarUrl});
   }
 
   /// Fetches the current avatar URL from the `profiles` table, or null if
   /// none has been set.
   Future<String?> fetchAvatarUrl() async {
-    final userId = supabase.auth.currentUser?.id;
+    final userId = firebaseAuth.currentUser?.uid;
     if (userId == null) return null;
 
-    final row = await supabase
-        .from(_tableProfiles)
-        .select(_columnAvatarUrl)
-        .eq('id', userId)
-        .maybeSingle();
+    final row = (await profiles.doc(userId).get()).data();
 
     if (row == null) return null;
     final url = row[_columnAvatarUrl] as String?;

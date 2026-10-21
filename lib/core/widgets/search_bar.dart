@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
-import 'asset_icon.dart';
+import 'glass_container.dart';
 
 /// Floating location search bar shared by the Maps and Routes tabs.
 ///
@@ -108,90 +108,89 @@ class _LocationSearchBarState extends State<LocationSearchBar> {
   Widget build(BuildContext context) {
     final isDisabled = widget.disabled;
     final iconColor = isDisabled
-        ? AppColors.hintGrey.withValues(alpha: 0.5)
-        : AppColors.primary;
+        ? AppColors.textMuted.withValues(alpha: 0.5)
+        : AppColors.textPrimary;
 
     return Opacity(
       opacity: isDisabled ? 0.5 : 1.0,
       child: IgnorePointer(
         ignoring: isDisabled,
-        child: Container(
-          height: 52,
+        child: GlassContainer(
+          radius: 999,
           padding: const EdgeInsets.symmetric(horizontal: 18),
-          decoration: BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.circular(30),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x26000000),
-                blurRadius: 16,
-                offset: Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              AssetIcon(
-                'public/assets/icons/alarm_clock_icon.png',
-                size: 30,
-                color: iconColor,
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: TextField(
-                  controller: _controller,
-                  focusNode: _focusNode,
-                  onChanged: widget.onChanged,
-                  onSubmitted: widget.onSubmitted,
-                  onTapOutside: (_) {},
-                  textInputAction: TextInputAction.search,
-                  cursorColor: AppColors.primary,
-                  maxLines: 1,
-                  style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    color: AppColors.textDark,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  decoration: InputDecoration(
-                    isCollapsed: true,
-                    border: InputBorder.none,
-                    hintText: widget.hintText,
-                    hintStyle: const TextStyle(
+          tint: _focusNode.hasFocus ? .16 : .10,
+          child: SizedBox(
+            height: 52,
+            child: Row(
+              children: [
+                Icon(Icons.search_rounded, size: 22, color: iconColor),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    focusNode: _focusNode,
+                    onChanged: widget.onChanged,
+                    onSubmitted: widget.onSubmitted,
+                    onTapOutside: (_) {},
+                    textInputAction: TextInputAction.search,
+                    cursorColor: AppColors.textPrimary,
+                    maxLines: 1,
+                    style: const TextStyle(
                       fontFamily: 'Poppins',
-                      color: AppColors.hintGrey,
+                      color: AppColors.textPrimary,
                       fontSize: 15,
                       fontWeight: FontWeight.w500,
                     ),
+                    decoration: InputDecoration(
+                      isCollapsed: true,
+                      // Do not inherit any of the app-wide input treatment:
+                      // the text belongs directly on the glass bar, rather
+                      // than inside a second outlined pill.
+                      filled: false,
+                      fillColor: Colors.transparent,
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      disabledBorder: InputBorder.none,
+                      errorBorder: InputBorder.none,
+                      focusedErrorBorder: InputBorder.none,
+                      hintText: widget.hintText,
+                      hintStyle: const TextStyle(
+                        fontFamily: 'Poppins',
+                        color: AppColors.textMuted,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              if (_showClear) ...[
-                _ActionIcon(icon: Icons.close_rounded, onTap: _clear),
-                const SizedBox(width: 10),
-              ],
-              if (widget.showMic) ...[
+                const SizedBox(width: 8),
+                if (_showClear) ...[
+                  _ActionIcon(icon: Icons.close_rounded, onTap: _clear),
+                  const SizedBox(width: 10),
+                ],
+                if (widget.showMic) ...[
+                  _ActionIcon(
+                    icon: widget.micActive ? Icons.mic : Icons.mic_rounded,
+                    onTap: widget.onMicTap,
+                    color: widget.micActive ? AppColors.error : iconColor,
+                  ),
+                  const SizedBox(width: 10),
+                ],
                 _ActionIcon(
-                  icon: widget.micActive ? Icons.mic : Icons.mic_rounded,
-                  onTap: widget.onMicTap,
-                  color: widget.micActive ? AppColors.error : iconColor,
+                  icon: Icons.search_rounded,
+                  color: iconColor,
+                  onTap: () {
+                    final text = _controller.text;
+                    if (widget.onSearchTap != null) {
+                      widget.onSearchTap!(text);
+                    } else {
+                      widget.onSubmitted?.call(text);
+                    }
+                  },
                 ),
-                const SizedBox(width: 10),
               ],
-              _ActionIcon(
-                icon: Icons.search_rounded,
-                color: iconColor,
-                onTap: () {
-                  final text = _controller.text;
-                  if (widget.onSearchTap != null) {
-                    widget.onSearchTap!(text);
-                  } else {
-                    widget.onSubmitted?.call(text);
-                  }
-                },
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -208,10 +207,13 @@ class _ActionIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Icon(icon, color: color ?? AppColors.primary, size: 30),
+    return Semantics(
+      button: true,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Icon(icon, color: color ?? AppColors.textPrimary, size: 24),
+      ),
     );
   }
 }

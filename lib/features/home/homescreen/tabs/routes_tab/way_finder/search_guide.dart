@@ -117,8 +117,9 @@ class _SearchGuideSheetState extends State<_SearchGuideSheet> {
   Future<void> _useCurrentLocation() async {
     try {
       final pos = await geo.Geolocator.getCurrentPosition(
-        locationSettings:
-            const geo.LocationSettings(accuracy: geo.LocationAccuracy.high),
+        locationSettings: const geo.LocationSettings(
+          accuracy: geo.LocationAccuracy.high,
+        ),
       );
       final place = PlaceResult(
         name: 'Current Location',
@@ -146,7 +147,9 @@ class _SearchGuideSheetState extends State<_SearchGuideSheet> {
     if (place.needsRetrieve) {
       try {
         resolved = await _searchService.retrieve(
-            place, sessionToken: _ensureSession());
+          place,
+          sessionToken: _ensureSession(),
+        );
         _sessionToken = null;
       } catch (_) {
         return;
@@ -179,10 +182,12 @@ class _SearchGuideSheetState extends State<_SearchGuideSheet> {
     if (_selectedOrigin != null && _selectedDestination != null) {
       // Both selected — return immediately.
       if (mounted) {
-        Navigator.of(context).pop(SearchGuideResult(
-          origin: _selectedOrigin!,
-          destination: _selectedDestination!,
-        ));
+        Navigator.of(context).pop(
+          SearchGuideResult(
+            origin: _selectedOrigin!,
+            destination: _selectedDestination!,
+          ),
+        );
       }
     }
   }
@@ -249,22 +254,31 @@ class _SearchGuideSheetState extends State<_SearchGuideSheet> {
                   Column(
                     children: [
                       const SizedBox(height: 14),
-                      const Icon(Icons.location_on,
-                          size: 22, color: AppColors.primary),
-                      ...List.generate(3, (_) => Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Container(
-                              width: 2.5,
-                              height: 5,
-                              decoration: BoxDecoration(
-                                color: AppColors.primary,
-                                borderRadius: BorderRadius.circular(1),
-                              ),
+                      const Icon(
+                        Icons.location_on,
+                        size: 22,
+                        color: AppColors.primary,
+                      ),
+                      ...List.generate(
+                        3,
+                        (_) => Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Container(
+                            width: 2.5,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              borderRadius: BorderRadius.circular(1),
                             ),
-                          )),
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 8),
-                      const Icon(Icons.location_on,
-                          size: 22, color: AppColors.error),
+                      const Icon(
+                        Icons.location_on,
+                        size: 22,
+                        color: AppColors.error,
+                      ),
                     ],
                   ),
                   const SizedBox(width: 12),
@@ -309,8 +323,11 @@ class _SearchGuideSheetState extends State<_SearchGuideSheet> {
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.my_location_rounded,
-                            size: 18, color: AppColors.primary),
+                        Icon(
+                          Icons.my_location_rounded,
+                          size: 18,
+                          color: AppColors.primary,
+                        ),
                         SizedBox(width: 8),
                         Text(
                           'Use Current Location',
@@ -334,24 +351,26 @@ class _SearchGuideSheetState extends State<_SearchGuideSheet> {
               child: _loading
                   ? const Center(
                       child: CircularProgressIndicator(
-                          color: AppColors.primary, strokeWidth: 2.5),
+                        color: AppColors.primary,
+                        strokeWidth: 2.5,
+                      ),
                     )
                   : _results.isEmpty
-                      ? const SizedBox.shrink()
-                      : ListView.separated(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          physics: const ClampingScrollPhysics(),
-                          itemCount: _results.length,
-                          separatorBuilder: (_, _) =>
-                              const Divider(height: 1, color: AppColors.border),
-                          itemBuilder: (_, index) {
-                            final place = _results[index];
-                            return _ResultRow(
-                              place: place,
-                              onTap: () => _selectResult(place),
-                            );
-                          },
-                        ),
+                  ? const SizedBox.shrink()
+                  : ListView.separated(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      physics: const ClampingScrollPhysics(),
+                      itemCount: _results.length,
+                      separatorBuilder: (_, _) =>
+                          const Divider(height: 1, color: AppColors.border),
+                      itemBuilder: (_, index) {
+                        final place = _results[index];
+                        return _ResultRow(
+                          place: place,
+                          onTap: () => _selectResult(place),
+                        );
+                      },
+                    ),
             ),
           ],
         ),

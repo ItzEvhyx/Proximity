@@ -8,14 +8,15 @@ import 'package:sensors_plus/sensors_plus.dart';
 
 import '../../../../../../../core/global_services/vibration_service.dart';
 import '../../../../../../../core/shared_prefs/shared_prefs.dart';
-import '../../../../../../../core/supabase/supabase_client.dart';
+import '../../../../../../../core/firebase/firebase_client.dart';
 import '../../../../../../../core/theme/app_colors.dart';
 
 // ── Alarm sound key → asset path mapping ─────────────────────────────────────
 
 const _soundAssets = {
   'default_alarm': 'public/assets/audio/default_alarm.mp3',
-  'birds_chirping': 'public/assets/audio/calming alarms/birds_chirping_alarm.mp3',
+  'birds_chirping':
+      'public/assets/audio/calming alarms/birds_chirping_alarm.mp3',
   'life_core': 'public/assets/audio/calming alarms/life_core_alarm.mp3',
   'piano': 'public/assets/audio/calming alarms/piano_alarm.mp3',
   'air_raid': 'public/assets/audio/intense alarms/air_raid_salarm.mp3',
@@ -75,9 +76,9 @@ class _DismissMethodScreenState extends State<DismissMethodScreen> {
 
   void _onRouteAnimationStatus(AnimationStatus status) {
     if (status == AnimationStatus.completed) {
-      ModalRoute.of(context)
-          ?.animation
-          ?.removeStatusListener(_onRouteAnimationStatus);
+      ModalRoute.of(
+        context,
+      )?.animation?.removeStatusListener(_onRouteAnimationStatus);
       _revealContent();
     }
   }
@@ -131,12 +132,8 @@ class _DismissMethodScreenState extends State<DismissMethodScreen> {
   }
 
   Future<void> _saveToDatabase(String key) async {
-    final userId = supabase.auth.currentUser?.id;
-    if (userId == null) return;
     try {
-      await supabase
-          .from('profiles')
-          .update({'dismiss_method': key}).eq('id', userId);
+      await updateCurrentProfile({'dismiss_method': key});
     } catch (_) {}
   }
 
@@ -154,7 +151,9 @@ class _DismissMethodScreenState extends State<DismissMethodScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 14),
+                      horizontal: 12,
+                      vertical: 14,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.white,
                       borderRadius: BorderRadius.circular(16),
@@ -173,16 +172,22 @@ class _DismissMethodScreenState extends State<DismissMethodScreen> {
                           behavior: HitTestBehavior.opaque,
                           child: const Padding(
                             padding: EdgeInsets.only(right: 8),
-                            child: Icon(Icons.chevron_left_rounded,
-                                size: 28, color: AppColors.primary),
+                            child: Icon(
+                              Icons.chevron_left_rounded,
+                              size: 28,
+                              color: AppColors.primary,
+                            ),
                           ),
                         ),
-                        const Text('Dismiss Method',
-                            style: TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: 17,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textDark)),
+                        const Text(
+                          'Dismiss Method',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 17,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textDark,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -198,29 +203,35 @@ class _DismissMethodScreenState extends State<DismissMethodScreen> {
                             padding: const EdgeInsets.fromLTRB(32, 0, 32, 100),
                             children: [
                               _buildCard(
-                                  key: 'slide',
-                                  label: 'Slide to snooze',
-                                  isDefault: true,
-                                  child: _SlideWidget(
-                                      active: _selectedKey == 'slide' &&
-                                          _alarmPlaying,
-                                      onDismissed: _onDismissed)),
+                                key: 'slide',
+                                label: 'Slide to snooze',
+                                isDefault: true,
+                                child: _SlideWidget(
+                                  active:
+                                      _selectedKey == 'slide' && _alarmPlaying,
+                                  onDismissed: _onDismissed,
+                                ),
+                              ),
                               const SizedBox(height: 28),
                               _buildCard(
-                                  key: 'shake',
-                                  label: 'Shake to Snooze',
-                                  child: _ShakeWidget(
-                                      active: _selectedKey == 'shake' &&
-                                          _alarmPlaying,
-                                      onDismissed: _onDismissed)),
+                                key: 'shake',
+                                label: 'Shake to Snooze',
+                                child: _ShakeWidget(
+                                  active:
+                                      _selectedKey == 'shake' && _alarmPlaying,
+                                  onDismissed: _onDismissed,
+                                ),
+                              ),
                               const SizedBox(height: 28),
                               _buildCard(
-                                  key: 'solve',
-                                  label: 'Solve to snooze',
-                                  child: _SolveWidget(
-                                      active: _selectedKey == 'solve' &&
-                                          _alarmPlaying,
-                                      onDismissed: _onDismissed)),
+                                key: 'solve',
+                                label: 'Solve to snooze',
+                                child: _SolveWidget(
+                                  active:
+                                      _selectedKey == 'solve' && _alarmPlaying,
+                                  onDismissed: _onDismissed,
+                                ),
+                              ),
                             ],
                           )
                         : const SizedBox.shrink(),
@@ -253,12 +264,15 @@ class _DismissMethodScreenState extends State<DismissMethodScreen> {
                     ],
                   ),
                   child: const Center(
-                    child: Text('Save',
-                        style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.white)),
+                    child: Text(
+                      'Save',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.white,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -302,33 +316,47 @@ class _DismissMethodScreenState extends State<DismissMethodScreen> {
               child: Row(
                 children: [
                   Expanded(
-                    child: Row(children: [
-                      Text(label,
+                    child: Row(
+                      children: [
+                        Text(
+                          label,
                           style: const TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textDark)),
-                      if (isDefault) ...[
-                        const SizedBox(width: 6),
-                        const Text('(Default)',
+                            fontFamily: 'Poppins',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textDark,
+                          ),
+                        ),
+                        if (isDefault) ...[
+                          const SizedBox(width: 6),
+                          const Text(
+                            '(Default)',
                             style: TextStyle(
-                                fontFamily: 'Inter',
-                                fontSize: 11,
-                                fontWeight: FontWeight.w400,
-                                color: AppColors.textGrey)),
+                              fontFamily: 'Inter',
+                              fontSize: 11,
+                              fontWeight: FontWeight.w400,
+                              color: AppColors.textGrey,
+                            ),
+                          ),
+                        ],
                       ],
-                    ]),
+                    ),
                   ),
                   AnimatedOpacity(
                     opacity: isSelected ? 1.0 : 0.0,
                     duration: const Duration(milliseconds: 200),
                     child: Container(
-                      width: 24, height: 24,
+                      width: 24,
+                      height: 24,
                       decoration: const BoxDecoration(
-                          shape: BoxShape.circle, color: AppColors.primary),
-                      child: const Icon(Icons.check_rounded,
-                          size: 14, color: AppColors.white),
+                        shape: BoxShape.circle,
+                        color: AppColors.primary,
+                      ),
+                      child: const Icon(
+                        Icons.check_rounded,
+                        size: 14,
+                        color: AppColors.white,
+                      ),
                     ),
                   ),
                 ],
@@ -381,20 +409,27 @@ class _SlideWidgetState extends State<_SlideWidget> {
                 const Center(
                   child: Padding(
                     padding: EdgeInsets.only(left: 50),
-                    child: Text('Slide to snooze',
-                        style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white70)),
+                    child: Text(
+                      'Slide to snooze',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white70,
+                      ),
+                    ),
                   ),
                 ),
                 Positioned(
                   left: 4 + _dragX,
                   child: GestureDetector(
                     onHorizontalDragUpdate: widget.active
-                        ? (d) => setState(() => _dragX =
-                            (_dragX + d.delta.dx).clamp(0.0, _maxDrag))
+                        ? (d) => setState(
+                            () => _dragX = (_dragX + d.delta.dx).clamp(
+                              0.0,
+                              _maxDrag,
+                            ),
+                          )
                         : null,
                     onHorizontalDragEnd: widget.active
                         ? (_) {
@@ -412,8 +447,11 @@ class _SlideWidgetState extends State<_SlideWidget> {
                         borderRadius: BorderRadius.circular(22),
                       ),
                       child: const Center(
-                        child: Icon(Icons.double_arrow_rounded,
-                            color: AppColors.primary, size: 24),
+                        child: Icon(
+                          Icons.double_arrow_rounded,
+                          color: AppColors.primary,
+                          size: 24,
+                        ),
                       ),
                     ),
                   ),
@@ -490,7 +528,8 @@ class _ShakeWidgetState extends State<_ShakeWidget>
     _shakeCount = 0;
     _accelSub = accelerometerEventStream().listen((event) {
       final mag = sqrt(
-          event.x * event.x + event.y * event.y + event.z * event.z);
+        event.x * event.x + event.y * event.y + event.z * event.z,
+      );
       if (mag > _shakeThreshold) {
         final now = DateTime.now();
         if (now.difference(_lastShake).inMilliseconds > 300) {
@@ -545,24 +584,18 @@ class _ShakeWidgetState extends State<_ShakeWidget>
                       children: [
                         _PulseRing(progress: _pulseController.value),
                         _PulseRing(
-                            progress:
-                                (_pulseController.value + 0.33) % 1.0),
+                          progress: (_pulseController.value + 0.33) % 1.0,
+                        ),
                         _PulseRing(
-                            progress:
-                                (_pulseController.value + 0.66) % 1.0),
+                          progress: (_pulseController.value + 0.66) % 1.0,
+                        ),
                       ],
                     ),
                   ),
                 // Wave bars left
-                Positioned(
-                  left: 16,
-                  child: _WaveBars(active: isArmed),
-                ),
+                Positioned(left: 16, child: _WaveBars(active: isArmed)),
                 // Wave bars right
-                Positioned(
-                  right: 16,
-                  child: _WaveBars(active: isArmed),
-                ),
+                Positioned(right: 16, child: _WaveBars(active: isArmed)),
                 // Phone icon
                 AnimatedBuilder(
                   animation: _shakeAnim,
@@ -578,7 +611,7 @@ class _ShakeWidgetState extends State<_ShakeWidget>
                       gradient: const LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [Color(0xFFFBFCFB), Color(0xFFEEF1EC)],
+                        colors: [AppColors.surfaceRaised, AppColors.surface],
                       ),
                       border: Border.all(
                         color: isArmed
@@ -608,9 +641,7 @@ class _ShakeWidgetState extends State<_ShakeWidget>
           const SizedBox(height: 8),
           // Caption
           Text(
-            isArmed
-                ? 'Listening for shake…'
-                : 'Tap card to arm sensor',
+            isArmed ? 'Listening for shake…' : 'Tap card to arm sensor',
             style: TextStyle(
               fontFamily: 'Inter',
               fontSize: 13,
@@ -625,10 +656,10 @@ class _ShakeWidgetState extends State<_ShakeWidget>
             child: LinearProgressIndicator(
               value: progress,
               minHeight: 6,
-              backgroundColor:
-                  AppColors.primary.withValues(alpha: 0.08),
+              backgroundColor: AppColors.primary.withValues(alpha: 0.08),
               valueColor: const AlwaysStoppedAnimation<Color>(
-                  AppColors.primary),
+                AppColors.primary,
+              ),
             ),
           ),
           const SizedBox(height: 8),
@@ -701,7 +732,9 @@ class _WaveBarsState extends State<_WaveBars>
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 800));
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
   }
 
   @override
@@ -861,21 +894,27 @@ class _SolveWidgetState extends State<_SolveWidget>
           children: [
             _NumberBox(value: _numA.toString()),
             const SizedBox(width: 10),
-            Text(_operator,
-                style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textDark)),
+            Text(
+              _operator,
+              style: const TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textDark,
+              ),
+            ),
             const SizedBox(width: 10),
             _NumberBox(value: _numB.toString()),
             const SizedBox(width: 10),
-            const Text('=',
-                style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textDark)),
+            const Text(
+              '=',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textDark,
+              ),
+            ),
             const SizedBox(width: 10),
             SizedBox(
               width: 56,
@@ -898,10 +937,11 @@ class _SolveWidgetState extends State<_SolveWidget>
                     LengthLimitingTextInputFormatter(4),
                   ],
                   style: const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textDark),
+                    fontFamily: 'Poppins',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textDark,
+                  ),
                   decoration: const InputDecoration(
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.zero,
@@ -936,12 +976,15 @@ class _NumberBox extends StatelessWidget {
         ),
       ),
       child: Center(
-        child: Text(value,
-            style: const TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textDark)),
+        child: Text(
+          value,
+          style: const TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textDark,
+          ),
+        ),
       ),
     );
   }

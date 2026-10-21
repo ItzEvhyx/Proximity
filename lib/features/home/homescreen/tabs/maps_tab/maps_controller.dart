@@ -30,7 +30,7 @@ import 'place_result.dart';
 ///    search result.
 class MapsController extends ChangeNotifier {
   MapsController({MapsSearchService? service})
-      : _service = service ?? MapsSearchService() {
+    : _service = service ?? MapsSearchService() {
     searchText.addListener(_onQueryChanged);
     searchFocus.addListener(_onFocusChanged);
     _loadHistory();
@@ -138,6 +138,7 @@ class MapsController extends ChangeNotifier {
   static const Duration _locationPollInterval = Duration(seconds: 5);
   static const double _movedThresholdMeters = 12;
   Timer? _locationTimer;
+  bool _mapTabActive = true;
 
   void Function(PlaceResult place, {bool animateCamera})? _onShowPin;
   VoidCallback? _onClearPin;
@@ -203,8 +204,10 @@ class MapsController extends ChangeNotifier {
     _onShowPin?.call(_currentLocation!, animateCamera: false);
 
     try {
-      final resolved =
-          await _service.reverseGeocode(longitude: lng, latitude: lat);
+      final resolved = await _service.reverseGeocode(
+        longitude: lng,
+        latitude: lat,
+      );
       if (resolved != null && _searched == null) {
         _currentLocation = resolved.copyWith(
           isCurrentLocation: true,
@@ -218,10 +221,30 @@ class MapsController extends ChangeNotifier {
   }
 
   void _startLocationUpdates() {
+    // Location polling is only needed while the map is visible, except for an
+    // active proximity alarm where distance updates must keep running.
+    if (!_mapTabActive && !_tracking) return;
     _locationTimer?.cancel();
     _locationTimer = Timer.periodic(_locationPollInterval, (_) {
       _pollLocation();
     });
+  }
+
+  /// Called by the home shell when the Maps tab becomes visible or hidden.
+  /// This avoids a high-accuracy GPS read every five seconds while the user is
+  /// browsing settings/history, while preserving updates for active alarms.
+  void setMapTabActive(bool active) {
+    if (_mapTabActive == active) return;
+    _mapTabActive = active;
+
+    if (active || _tracking) {
+      _startLocationUpdates();
+      if (active) unawaited(_pollLocation());
+      return;
+    }
+
+    _locationTimer?.cancel();
+    _locationTimer = null;
   }
 
   /// Reads the current position; if the user has moved meaningfully, refreshes
@@ -230,8 +253,9 @@ class MapsController extends ChangeNotifier {
     geo.Position pos;
     try {
       pos = await geo.Geolocator.getCurrentPosition(
-        locationSettings:
-            const geo.LocationSettings(accuracy: geo.LocationAccuracy.high),
+        locationSettings: const geo.LocationSettings(
+          accuracy: geo.LocationAccuracy.high,
+        ),
       );
     } catch (_) {
       return;
@@ -240,7 +264,12 @@ class MapsController extends ChangeNotifier {
     final prevLng = _userLng;
     final prevLat = _userLat;
     if (prevLng != null && prevLat != null) {
-      final moved = _haversineMeters(prevLat, prevLng, pos.latitude, pos.longitude);
+      final moved = _haversineMeters(
+        prevLat,
+        prevLng,
+        pos.latitude,
+        pos.longitude,
+      );
       if (moved < _movedThresholdMeters) return; // negligible movement
     }
 
@@ -277,11 +306,18 @@ class MapsController extends ChangeNotifier {
   Future<void> _refreshCurrentLocationPin(double lng, double lat) async {
     PlaceResult updated;
     try {
-      final resolved =
-          await _service.reverseGeocode(longitude: lng, latitude: lat);
-      updated = (resolved ??
-              PlaceResult(name: 'Current location', longitude: lng, latitude: lat))
-          .copyWith(isCurrentLocation: true, distanceMeters: 0);
+      final resolved = await _service.reverseGeocode(
+        longitude: lng,
+        latitude: lat,
+      );
+      updated =
+          (resolved ??
+                  PlaceResult(
+                    name: 'Current location',
+                    longitude: lng,
+                    latitude: lat,
+                  ))
+              .copyWith(isCurrentLocation: true, distanceMeters: 0);
     } catch (_) {
       updated = PlaceResult(
         name: _currentLocation?.name ?? 'Current location',
@@ -437,8 +473,7 @@ class MapsController extends ChangeNotifier {
           p
         else
           p.copyWith(
-            distanceMeters:
-                _haversineMeters(lat, lng, p.latitude, p.longitude),
+            distanceMeters: _haversineMeters(lat, lng, p.latitude, p.longitude),
           ),
     ];
   }
@@ -453,7 +488,8 @@ class MapsController extends ChangeNotifier {
     double toRad(double d) => d * math.pi / 180.0;
     final dLat = toRad(lat2 - lat1);
     final dLng = toRad(lng2 - lng1);
-    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+    final a =
+        math.sin(dLat / 2) * math.sin(dLat / 2) +
         math.cos(toRad(lat1)) *
             math.cos(toRad(lat2)) *
             math.sin(dLng / 2) *
@@ -482,8 +518,10 @@ class MapsController extends ChangeNotifier {
       _resolvingPin = true;
       notifyListeners();
       try {
-        resolved =
-            await _service.retrieve(place, sessionToken: _ensureSession());
+        resolved = await _service.retrieve(
+          place,
+          sessionToken: _ensureSession(),
+        );
       } catch (_) {
         _resolvingPin = false;
         _error = 'Could not load that location.';
@@ -547,7 +585,8 @@ class MapsController extends ChangeNotifier {
 
     PlaceResult resolved;
     try {
-      resolved = await _service.reverseGeocode(
+      resolved =
+          await _service.reverseGeocode(
             longitude: longitude,
             latitude: latitude,
           ) ??
@@ -568,7 +607,11 @@ class MapsController extends ChangeNotifier {
       // A moved current-location pin is no longer at distance 0.
       final dist = (_userLng != null && _userLat != null)
           ? _haversineMeters(
-              _userLat!, _userLng!, resolved.latitude, resolved.longitude)
+              _userLat!,
+              _userLng!,
+              resolved.latitude,
+              resolved.longitude,
+            )
           : null;
       resolved = resolved.copyWith(
         isCurrentLocation: true,
@@ -620,6 +663,7 @@ class MapsController extends ChangeNotifier {
     _confirmedLat = frozen.latitude;
     _tracking = true;
     _firedAlertPhases.clear();
+    _startLocationUpdates();
     _updateDistanceAndEta();
 
     // Start foreground service so the app survives in the background.
@@ -640,10 +684,13 @@ class MapsController extends ChangeNotifier {
   /// Removes a saved trip from the user's history (e.g. via the trash button).
   void removeTrip(PinnedTrip trip) {
     final next = _history
-        .where((t) => !(t.name == trip.name &&
-            t.longitude == trip.longitude &&
-            t.latitude == trip.latitude &&
-            t.pinnedAt == trip.pinnedAt))
+        .where(
+          (t) =>
+              !(t.name == trip.name &&
+                  t.longitude == trip.longitude &&
+                  t.latitude == trip.latitude &&
+                  t.pinnedAt == trip.pinnedAt),
+        )
         .toList();
     if (next.length == _history.length) return;
     _history = next;
@@ -721,10 +768,12 @@ class MapsController extends ChangeNotifier {
     // create duplicates; newest first; cap at [_maxHistory].
     final next = <PinnedTrip>[
       entry,
-      ..._history.where((t) =>
-          !(t.name == entry.name &&
-              t.longitude == entry.longitude &&
-              t.latitude == entry.latitude)),
+      ..._history.where(
+        (t) =>
+            !(t.name == entry.name &&
+                t.longitude == entry.longitude &&
+                t.latitude == entry.latitude),
+      ),
     ];
     if (next.length > _maxHistory) {
       next.removeRange(_maxHistory, next.length);
@@ -740,17 +789,21 @@ class MapsController extends ChangeNotifier {
       final db = AppDatabase.instance;
       final rows = await db.getRecentTrips(limit: _maxHistory);
       if (rows.isNotEmpty) {
-        _history = rows.map((row) => PinnedTrip(
-          name: row['name'] as String,
-          address: row['address'] as String?,
-          longitude: (row['longitude'] as num).toDouble(),
-          latitude: (row['latitude'] as num).toDouble(),
-          distanceMeters: (row['distance_meters'] as num?)?.toDouble(),
-          startLocationName: row['start_location_name'] as String?,
-          startLongitude: (row['start_longitude'] as num?)?.toDouble(),
-          startLatitude: (row['start_latitude'] as num?)?.toDouble(),
-          pinnedAt: DateTime.parse(row['pinned_at'] as String),
-        )).toList();
+        _history = rows
+            .map(
+              (row) => PinnedTrip(
+                name: row['name'] as String,
+                address: row['address'] as String?,
+                longitude: (row['longitude'] as num).toDouble(),
+                latitude: (row['latitude'] as num).toDouble(),
+                distanceMeters: (row['distance_meters'] as num?)?.toDouble(),
+                startLocationName: row['start_location_name'] as String?,
+                startLongitude: (row['start_longitude'] as num?)?.toDouble(),
+                startLatitude: (row['start_latitude'] as num?)?.toDouble(),
+                pinnedAt: DateTime.parse(row['pinned_at'] as String),
+              ),
+            )
+            .toList();
         notifyListeners();
         return;
       }
@@ -778,17 +831,21 @@ class MapsController extends ChangeNotifier {
 
       // Write to SQLite.
       final db = AppDatabase.instance;
-      final rows = _history.map((t) => {
-        'name': t.name,
-        'address': t.address,
-        'longitude': t.longitude,
-        'latitude': t.latitude,
-        'distance_meters': t.distanceMeters,
-        'start_location_name': t.startLocationName,
-        'start_longitude': t.startLongitude,
-        'start_latitude': t.startLatitude,
-        'pinned_at': t.pinnedAt.toIso8601String(),
-      }).toList();
+      final rows = _history
+          .map(
+            (t) => {
+              'name': t.name,
+              'address': t.address,
+              'longitude': t.longitude,
+              'latitude': t.latitude,
+              'distance_meters': t.distanceMeters,
+              'start_location_name': t.startLocationName,
+              'start_longitude': t.startLongitude,
+              'start_latitude': t.startLatitude,
+              'pinned_at': t.pinnedAt.toIso8601String(),
+            },
+          )
+          .toList();
       await db.replaceAllTrips(rows);
     } catch (_) {
       // Best-effort persistence.
@@ -882,7 +939,8 @@ class MapsController extends ChangeNotifier {
     final lat = _userLat;
     final destLng = _confirmedLng;
     final destLat = _confirmedLat;
-    if (lng == null || lat == null || destLng == null || destLat == null) return;
+    if (lng == null || lat == null || destLng == null || destLat == null)
+      return;
 
     final dist = _haversineMeters(lat, lng, destLat, destLng);
     _distanceToDestination = dist;
@@ -891,7 +949,9 @@ class MapsController extends ChangeNotifier {
     // Since we don't know the mode here, use ~1.4 m/s (~walking pace).
     final etaSeconds = dist / 1.4;
     final etaMin = (etaSeconds / 60).round();
-    _etaToDestination = etaMin < 60 ? '$etaMin min' : '${etaMin ~/ 60}h ${etaMin % 60}m';
+    _etaToDestination = etaMin < 60
+        ? '$etaMin min'
+        : '${etaMin ~/ 60}h ${etaMin % 60}m';
 
     // Keep the sticky notification in sync with the latest distance.
     ProximityForegroundService.instance.updateNotification(
@@ -931,6 +991,10 @@ class MapsController extends ChangeNotifier {
     ProximityForegroundService.instance.stop();
     // Hide the floating overlay.
     OverlayService.instance.hide();
+    if (!_mapTabActive) {
+      _locationTimer?.cancel();
+      _locationTimer = null;
+    }
     notifyListeners();
   }
 

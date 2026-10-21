@@ -1,10 +1,9 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../../core/animations/screen_transitions.dart';
 import '../../../../../core/shared_prefs/shared_prefs.dart';
-import '../../../../../core/supabase/supabase_client.dart';
+import '../../../../../core/firebase/firebase_client.dart';
 import '../../../../../core/theme/app_colors.dart';
 import 'alarm_settings/alarm_card/alarm_dismissal.dart';
 import 'alarm_settings/alarm_card/alarm_sound_card.dart';
@@ -12,19 +11,19 @@ import 'alarm_settings/alarm_card/alarm_vibration.dart';
 import 'alarm_settings/alarm_card/alert_zone_card.dart';
 import 'profile_avatar_service.dart';
 
-/// Settings screen replicating the green-accented card-based design.
+/// Settings screen using the app-wide monochrome card system.
 /// Uses the existing [AppColors] palette for all colors.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
   // ── Derived palette from AppColors ─────────────────────────────────────
-  static const Color _bg = AppColors.white;
-  static const Color _card = AppColors.white;
-  static const Color _ink = AppColors.textDark;
-  static const Color _inkSoft = AppColors.textGrey;
-  static const Color _accent = AppColors.primary;
+  static const Color _bg = AppColors.bg;
+  static const Color _card = AppColors.surfaceRaised;
+  static const Color _ink = AppColors.textPrimary;
+  static const Color _inkSoft = AppColors.textSecondary;
+  static const Color _accent = AppColors.textPrimary;
   static const Color _line = AppColors.border;
-  static const Color _trackOff = Color(0xFFE4E6E1);
+  static const Color _trackOff = AppColors.surfaceHigh;
 
   static const double _radiusLg = 22;
 
@@ -56,8 +55,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _uploading = true);
 
     try {
-      final url =
-          await ProfileAvatarService.instance.pickCropAndUploadAvatar(context);
+      final url = await ProfileAvatarService.instance.pickCropAndUploadAvatar(
+        context,
+      );
       if (url != null && mounted) {
         setState(() => _avatarUrl = url);
       }
@@ -83,15 +83,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = supabase.auth.currentUser;
-    final meta = user?.userMetadata;
-    final firstName = meta?['first_name'] as String? ?? '';
-    final lastName = meta?['last_name'] as String? ?? '';
-    final fullName = '$firstName $lastName'.trim();
+    final user = firebaseAuth.currentUser;
+    final nameParts = (user?.displayName ?? '').trim().split(RegExp(r'\s+'));
+    final firstName = nameParts.isNotEmpty ? nameParts.first : '';
+    final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+    final fullName = user?.displayName ?? '';
     final email = user?.email ?? '';
-    final createdAt = user?.createdAt;
+    final createdAt = user?.metadata.creationTime;
     final joinedLabel = createdAt != null
-        ? 'JOINED ${_formatDate(DateTime.parse(createdAt))}'
+        ? 'JOINED ${_formatDate(createdAt)}'
         : '';
     final initials = _getInitials(firstName, lastName);
 
@@ -101,143 +101,160 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: _contentVisible
             ? RepaintBoundary(
                 child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-          children: [
-            const SizedBox(height: 14),
-            // ── Header ───────────────────────────────────────────────────
-            const Text(
-              'Settings',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 26,
-                fontWeight: FontWeight.w700,
-                color: SettingsScreen._ink,
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(height: 12),
-            // ── Profile card ─────────────────────────────────────────────
-            _ProfileCard(
-              name: fullName.isNotEmpty ? fullName : 'User',
-              email: email,
-              joined: joinedLabel,
-              initials: initials,
-              avatarUrl: _avatarUrl,
-              uploading: _uploading,
-              onAvatarTap: _onAvatarTap,
-            ),
-            const SizedBox(height: 26),
-            // ── Alarm section ────────────────────────────────────────────
-            const _SectionTitle(title: 'Alarm'),
-            const SizedBox(height: 10),
-            _SettingsCard(
-              showRail: true,
-              children: [
-                _ChevronRow(
-                  icon: Icons.alarm_rounded,
-                  label: 'Alarm sound',
-                  sub: _alarmSoundLabel(AppPrefs.alarmSound),
-                  onTap: () async {
-                    await showAlarmSoundPicker(context);
-                    if (mounted) setState(() {});
-                  },
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 6,
+                  ),
+                  children: [
+                    const SizedBox(height: 14),
+                    // ── Header ───────────────────────────────────────────────────
+                    const Text(
+                      'Settings',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 26,
+                        fontWeight: FontWeight.w700,
+                        color: SettingsScreen._ink,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // ── Profile card ─────────────────────────────────────────────
+                    _ProfileCard(
+                      name: fullName.isNotEmpty ? fullName : 'User',
+                      email: email,
+                      joined: joinedLabel,
+                      initials: initials,
+                      avatarUrl: _avatarUrl,
+                      uploading: _uploading,
+                      onAvatarTap: _onAvatarTap,
+                    ),
+                    const SizedBox(height: 26),
+                    // ── Alarm section ────────────────────────────────────────────
+                    const _SectionTitle(title: 'Alarm'),
+                    const SizedBox(height: 10),
+                    _SettingsCard(
+                      showRail: true,
+                      children: [
+                        _ChevronRow(
+                          icon: Icons.alarm_rounded,
+                          label: 'Alarm sound',
+                          sub: _alarmSoundLabel(AppPrefs.alarmSound),
+                          onTap: () async {
+                            await showAlarmSoundPicker(context);
+                            if (mounted) setState(() {});
+                          },
+                        ),
+                        _ChevronRow(
+                          icon: Icons.my_location_rounded,
+                          label: 'Alert zone distances',
+                          sub: _alertZoneLabel(),
+                          onTap: () async {
+                            await showAlertZonePicker(context);
+                            if (mounted) setState(() {});
+                          },
+                        ),
+                        _ChevronRow(
+                          icon: Icons.swipe_right_rounded,
+                          label: 'Dismiss method',
+                          sub: _dismissMethodLabel(AppPrefs.dismissMethod),
+                          onTap: () async {
+                            await _pushRoute(
+                              ScreenTransitions.fadeRightToLeft(
+                                const DismissMethodScreen(),
+                              ),
+                            );
+                            if (mounted) setState(() {});
+                          },
+                        ),
+                        _ChevronRow(
+                          icon: Icons.vibration_rounded,
+                          label: 'Vibration intensity',
+                          sub: _vibrationLabel(AppPrefs.vibrationIntensity),
+                          onTap: () async {
+                            await showVibrationPicker(context);
+                            if (mounted) setState(() {});
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    // ── Notifications section ────────────────────────────────────
+                    const _SectionTitle(title: 'Notifications'),
+                    const SizedBox(height: 10),
+                    _SettingsCard(
+                      children: [
+                        _ToggleRow(
+                          label: 'Disable all notifications',
+                          isOn: false,
+                        ),
+                        _ToggleRow(label: 'Alarm notification', isOn: true),
+                        _ToggleRow(
+                          label: 'ETA + distance notification',
+                          isOn: true,
+                        ),
+                        _ToggleRow(label: 'Battery optimization', isOn: true),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    // ── Permissions section ──────────────────────────────────────
+                    const _SectionTitle(title: 'Permissions'),
+                    const SizedBox(height: 10),
+                    _SettingsCard(
+                      children: [
+                        _ToggleRow(
+                          label: 'Location',
+                          sub: 'Foreground & background',
+                          isOn: true,
+                        ),
+                        _ToggleRow(label: 'Notifications', isOn: true),
+                        _ToggleRow(label: 'Alarm', isOn: true),
+                        _ToggleRow(
+                          label: 'Fullscreen',
+                          sub: 'Displaying over apps',
+                          isOn: true,
+                        ),
+                        _ToggleRow(
+                          label: 'Battery optimization exemption',
+                          isOn: true,
+                        ),
+                        _ToggleRow(label: 'Microphone', isOn: true),
+                        _ToggleRow(
+                          label: 'Photo library',
+                          sub: 'Camera access',
+                          isOn: true,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    // ── About section ────────────────────────────────────────────
+                    const _SectionTitle(title: 'About'),
+                    const SizedBox(height: 10),
+                    _SettingsCard(
+                      showRail: true,
+                      children: [
+                        _ChevronRow(
+                          icon: Icons.info_outline_rounded,
+                          label: 'App version',
+                          sub: '1.0.0',
+                        ),
+                        _ChevronRow(
+                          icon: Icons.chat_bubble_outline_rounded,
+                          label: 'Send feedback',
+                        ),
+                        _ChevronRow(
+                          icon: Icons.shield_outlined,
+                          label: 'Privacy policy / terms',
+                        ),
+                        _ChevronRow(
+                          icon: Icons.star_outline_rounded,
+                          label: 'Rate the app',
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 40),
+                  ],
                 ),
-                _ChevronRow(
-                  icon: Icons.my_location_rounded,
-                  label: 'Alert zone distances',
-                  sub: _alertZoneLabel(),
-                  onTap: () async {
-                    await showAlertZonePicker(context);
-                    if (mounted) setState(() {});
-                  },
-                ),
-                _ChevronRow(
-                  icon: Icons.swipe_right_rounded,
-                  label: 'Dismiss method',
-                  sub: _dismissMethodLabel(AppPrefs.dismissMethod),
-                  onTap: () async {
-                    await _pushRoute(
-                      ScreenTransitions.fadeRightToLeft(
-                          const DismissMethodScreen()),
-                    );
-                    if (mounted) setState(() {});
-                  },
-                ),
-                _ChevronRow(
-                  icon: Icons.vibration_rounded,
-                  label: 'Vibration intensity',
-                  sub: _vibrationLabel(AppPrefs.vibrationIntensity),
-                  onTap: () async {
-                    await showVibrationPicker(context);
-                    if (mounted) setState(() {});
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            // ── Notifications section ────────────────────────────────────
-            const _SectionTitle(title: 'Notifications'),
-            const SizedBox(height: 10),
-            _SettingsCard(
-              children: [
-                _ToggleRow(label: 'Disable all notifications', isOn: false),
-                _ToggleRow(label: 'Alarm notification', isOn: true),
-                _ToggleRow(label: 'ETA + distance notification', isOn: true),
-                _ToggleRow(label: 'Battery optimization', isOn: true),
-              ],
-            ),
-            const SizedBox(height: 24),
-            // ── Permissions section ──────────────────────────────────────
-            const _SectionTitle(title: 'Permissions'),
-            const SizedBox(height: 10),
-            _SettingsCard(
-              children: [
-                _ToggleRow(
-                    label: 'Location',
-                    sub: 'Foreground & background',
-                    isOn: true),
-                _ToggleRow(label: 'Notifications', isOn: true),
-                _ToggleRow(label: 'Alarm', isOn: true),
-                _ToggleRow(
-                    label: 'Fullscreen',
-                    sub: 'Displaying over apps',
-                    isOn: true),
-                _ToggleRow(
-                    label: 'Battery optimization exemption', isOn: true),
-                _ToggleRow(label: 'Microphone', isOn: true),
-                _ToggleRow(
-                    label: 'Photo library', sub: 'Camera access', isOn: true),
-              ],
-            ),
-            const SizedBox(height: 24),
-            // ── About section ────────────────────────────────────────────
-            const _SectionTitle(title: 'About'),
-            const SizedBox(height: 10),
-            _SettingsCard(
-              showRail: true,
-              children: [
-                _ChevronRow(
-                  icon: Icons.info_outline_rounded,
-                  label: 'App version',
-                  sub: '1.0.0',
-                ),
-                _ChevronRow(
-                  icon: Icons.chat_bubble_outline_rounded,
-                  label: 'Send feedback',
-                ),
-                _ChevronRow(
-                  icon: Icons.shield_outlined,
-                  label: 'Privacy policy / terms',
-                ),
-                _ChevronRow(
-                  icon: Icons.star_outline_rounded,
-                  label: 'Rate the app',
-                ),
-              ],
-            ),
-            const SizedBox(height: 40),
-          ],
-        ),
               )
             : const SizedBox.shrink(),
       ),
@@ -253,8 +270,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   String _formatDate(DateTime date) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
@@ -277,13 +304,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _alertZoneLabel() {
     final distances = AppPrefs.alertZoneDistances;
     final unit = AppPrefs.alertZoneUnit;
-    return distances.map((d) {
-      if (unit == 'km') {
-        final km = d / 1000;
-        return km == km.toInt() ? '${km.toInt()}km' : '${km.toStringAsFixed(1)}km';
-      }
-      return '${d}m';
-    }).join(' · ');
+    return distances
+        .map((d) {
+          if (unit == 'km') {
+            final km = d / 1000;
+            return km == km.toInt()
+                ? '${km.toInt()}km'
+                : '${km.toStringAsFixed(1)}km';
+          }
+          return '${d}m';
+        })
+        .join(' · ');
   }
 
   /// Maps dismiss method keys to human-readable labels.
@@ -389,28 +420,28 @@ class _ProfileCard extends StatelessWidget {
                               ),
                             )
                           : avatarUrl != null
-                              ? CachedNetworkImage(
-                                  imageUrl: avatarUrl!,
-                                  width: 62,
-                                  height: 62,
-                                  fit: BoxFit.cover,
-                                  placeholder: (_, __) => Container(
-                                    color: AppColors.surfaceMuted,
-                                    child: const Center(
-                                      child: SizedBox(
-                                        width: 18,
-                                        height: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: AppColors.primary,
-                                        ),
-                                      ),
+                          ? CachedNetworkImage(
+                              imageUrl: avatarUrl!,
+                              width: 62,
+                              height: 62,
+                              fit: BoxFit.cover,
+                              placeholder: (_, __) => Container(
+                                color: AppColors.surfaceMuted,
+                                child: const Center(
+                                  child: SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppColors.primary,
                                     ),
                                   ),
-                                  errorWidget: (_, __, ___) =>
-                                      _defaultAvatar(initials),
-                                )
-                              : _defaultAvatar(initials),
+                                ),
+                              ),
+                              errorWidget: (_, __, ___) =>
+                                  _defaultAvatar(initials),
+                            )
+                          : _defaultAvatar(initials),
                     ),
                   ),
                   // Camera badge at bottom-right
@@ -423,10 +454,7 @@ class _ProfileCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: AppColors.primary,
-                        border: Border.all(
-                          color: AppColors.white,
-                          width: 2,
-                        ),
+                        border: Border.all(color: AppColors.white, width: 2),
                       ),
                       child: const Icon(
                         Icons.camera_alt_rounded,
@@ -533,12 +561,7 @@ class _SectionTitle extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        Expanded(
-          child: Container(
-            height: 1,
-            color: SettingsScreen._line,
-          ),
-        ),
+        Expanded(child: Container(height: 1, color: SettingsScreen._line)),
       ],
     );
   }
@@ -593,7 +616,7 @@ class _SettingsCard extends StatelessWidget {
                     const Divider(
                       height: 1,
                       thickness: 1,
-                      color: Color(0xFFF0F2EE),
+                      color: AppColors.surfaceHigh,
                     ),
                 ],
               ],
@@ -634,10 +657,7 @@ class _ChevronRow extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: SettingsScreen._card,
-                border: Border.all(
-                  color: SettingsScreen._accent,
-                  width: 1.5,
-                ),
+                border: Border.all(color: SettingsScreen._accent, width: 1.5),
               ),
               child: Icon(icon, size: 16, color: SettingsScreen._accent),
             ),
@@ -684,11 +704,7 @@ class _ChevronRow extends StatelessWidget {
 }
 
 class _ToggleRow extends StatefulWidget {
-  const _ToggleRow({
-    required this.label,
-    this.sub,
-    required this.isOn,
-  });
+  const _ToggleRow({required this.label, this.sub, required this.isOn});
 
   final String label;
   final String? sub;
@@ -752,8 +768,7 @@ class _ToggleRowState extends State<_ToggleRow> {
                 color: _value ? AppColors.primary : SettingsScreen._trackOff,
               ),
               padding: const EdgeInsets.all(3),
-              alignment:
-                  _value ? Alignment.centerRight : Alignment.centerLeft,
+              alignment: _value ? Alignment.centerRight : Alignment.centerLeft,
               child: Container(
                 width: 18,
                 height: 18,

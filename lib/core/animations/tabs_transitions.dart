@@ -42,14 +42,15 @@ class _TabsTransitionState extends State<TabsTransition>
     _currentIndex = widget.index;
     // The initial tab is immediately visible — mark it as built.
     _builtTabs.add(_currentIndex);
-    _controller = AnimationController(
-      vsync: this,
-      duration: widget.duration,
-      value: 1,
-    )..addStatusListener((status) {
-        // Rebuild once the slide finishes so the outgoing tab goes offstage.
-        if (status == AnimationStatus.completed && mounted) setState(() {});
-      });
+    _controller =
+        AnimationController(
+          vsync: this,
+          duration: widget.duration,
+          value: 1,
+        )..addStatusListener((status) {
+          // Rebuild once the slide finishes so the outgoing tab goes offstage.
+          if (status == AnimationStatus.completed && mounted) setState(() {});
+        });
   }
 
   @override
@@ -107,9 +108,7 @@ class _TabsTransitionState extends State<TabsTransition>
     if (!visible && index != 0) {
       return Offstage(
         offstage: true,
-        child: hasBeenBuilt
-            ? widget.children[index]
-            : const SizedBox.shrink(),
+        child: hasBeenBuilt ? widget.children[index] : const SizedBox.shrink(),
       );
     }
 

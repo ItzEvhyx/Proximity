@@ -8,17 +8,17 @@ enum TravelMode { drive, transit, walk }
 
 /// Display label for a [TravelMode].
 String travelModeLabel(TravelMode m) => switch (m) {
-      TravelMode.drive => 'Drive',
-      TravelMode.transit => 'Transit',
-      TravelMode.walk => 'Walk',
-    };
+  TravelMode.drive => 'Drive',
+  TravelMode.transit => 'Transit',
+  TravelMode.walk => 'Walk',
+};
 
 /// Icon asset path for a [TravelMode].
 String travelModeIcon(TravelMode m) => switch (m) {
-      TravelMode.drive => 'public/assets/icons/car_icon.png',
-      TravelMode.transit => 'public/assets/icons/train_icon.png',
-      TravelMode.walk => 'public/assets/icons/walk_icon.png',
-    };
+  TravelMode.drive => 'public/assets/icons/car_icon.svg',
+  TravelMode.transit => 'public/assets/icons/train_icon.svg',
+  TravelMode.walk => 'public/assets/icons/walk_icon.svg',
+};
 
 /// "Route • Preview" header with a Clear action, plus a row of
 /// Drive / Transit / Walk mode chips.
@@ -75,7 +75,10 @@ class RouteTransitSelector extends StatelessWidget {
             GestureDetector(
               onTap: onClear,
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 6,
+                  horizontal: 12,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(16),
@@ -151,11 +154,7 @@ class _TravelModeChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            AssetIcon(
-              travelModeIcon(mode),
-              size: 16,
-              color: fg,
-            ),
+            AssetIcon(travelModeIcon(mode), size: 16, color: fg),
             const SizedBox(width: 6),
             Text(
               travelModeLabel(mode),

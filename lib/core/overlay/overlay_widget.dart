@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 
+import '../theme/app_colors.dart';
+
 /// A compact floating card displayed over other apps, showing real-time
 /// ETA and Distance — similar to Google Maps' mini navigation bubble.
 ///
@@ -78,13 +80,13 @@ class _ProximityOverlayCardState extends State<ProximityOverlayCard> {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF019D43).withValues(alpha: 0.2),
+                  color: AppColors.textPrimary.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Center(
                   child: Icon(
                     Icons.near_me_rounded,
-                    color: Color(0xFF019D43),
+                    color: AppColors.textPrimary,
                     size: 20,
                   ),
                 ),
@@ -95,7 +97,7 @@ class _ProximityOverlayCardState extends State<ProximityOverlayCard> {
                 icon: Icons.schedule_rounded,
                 label: 'ETA',
                 value: _eta,
-                color: const Color(0xFF019D43),
+                color: AppColors.textPrimary,
               ),
               const SizedBox(width: 12),
               // Distance pill
@@ -103,7 +105,7 @@ class _ProximityOverlayCardState extends State<ProximityOverlayCard> {
                 icon: Icons.straighten_rounded,
                 label: 'Dist',
                 value: _distance,
-                color: const Color(0xFF2196F3),
+                color: AppColors.textSecondary,
               ),
             ],
           ),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_colors.dart';
+
 /// A single shimmering placeholder block used for skeleton loading states.
 ///
 /// All skeleton boxes share a single animation phase driven by the inherited
@@ -17,8 +19,8 @@ class SkeletonBox extends StatelessWidget {
   final double? height;
   final double borderRadius;
 
-  static const Color _base = Color(0xFFE3E6E8);
-  static const Color _highlight = Color(0xFFF4F6F7);
+  static const Color _base = AppColors.surfaceRaised;
+  static const Color _highlight = AppColors.surfaceHigh;
 
   @override
   Widget build(BuildContext context) {
@@ -78,7 +80,9 @@ class _ShimmerPhase extends InheritedWidget {
   final AnimationController controller;
 
   static AnimationController? of(BuildContext context) {
-    return context.dependOnInheritedWidgetOfExactType<_ShimmerPhase>()?.controller;
+    return context
+        .dependOnInheritedWidgetOfExactType<_ShimmerPhase>()
+        ?.controller;
   }
 
   @override
@@ -87,11 +91,7 @@ class _ShimmerPhase extends InheritedWidget {
 }
 
 class _ShimmerBox extends StatelessWidget {
-  const _ShimmerBox({
-    this.width,
-    this.height,
-    required this.borderRadius,
-  });
+  const _ShimmerBox({this.width, this.height, required this.borderRadius});
 
   final double? width;
   final double? height;

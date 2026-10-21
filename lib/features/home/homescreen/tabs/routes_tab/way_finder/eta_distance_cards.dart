@@ -23,11 +23,7 @@ class EtaDistanceCards extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: _InfoCard(
-            label: 'Est. time',
-            value: etaValue,
-            unit: etaUnit,
-          ),
+          child: _InfoCard(label: 'Est. time', value: etaValue, unit: etaUnit),
         ),
         const SizedBox(width: 10),
         Expanded(

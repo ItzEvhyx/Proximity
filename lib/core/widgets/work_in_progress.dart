@@ -48,10 +48,7 @@ class WorkInProgressView extends StatelessWidget {
                     height: 1.4,
                   ),
                 ),
-                if (child != null) ...[
-                  const SizedBox(height: 28),
-                  child!,
-                ],
+                if (child != null) ...[const SizedBox(height: 28), child!],
               ],
             ),
           ),

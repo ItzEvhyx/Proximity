@@ -42,7 +42,7 @@ class _HistoryTabState extends State<HistoryTab> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.white,
+      backgroundColor: AppColors.bg,
       body: Column(
         children: [
           // ── Green header with "Transit History" ──
@@ -97,7 +97,8 @@ class _TransitHistoryHeader extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         decoration: BoxDecoration(
-          color: const Color(0xFFD4F5E0),
+          color: AppColors.surface,
+          border: Border.all(color: AppColors.border),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
@@ -109,13 +110,13 @@ class _TransitHistoryHeader extends StatelessWidget {
                 fontFamily: 'Poppins',
                 fontSize: 26,
                 fontWeight: FontWeight.w800,
-                color: AppColors.textDark,
+                color: AppColors.textPrimary,
               ),
             ),
             const SizedBox(width: 12),
             const Icon(
               Icons.directions_bus_rounded,
-              color: AppColors.primary,
+              color: AppColors.textPrimary,
               size: 38,
             ),
           ],
@@ -179,7 +180,8 @@ class _HistoryModeToggle extends StatelessWidget {
       return left;
     }
 
-    final totalWidth = (2 * _barPadding) +
+    final totalWidth =
+        (2 * _barPadding) +
         itemWidths.fold<double>(0, (sum, w) => sum + w) +
         ((_items.length - 1) * _spacing);
 
@@ -188,7 +190,7 @@ class _HistoryModeToggle extends StatelessWidget {
       height: _itemHeight + (2 * _barPadding),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.12),
+          color: AppColors.surfaceRaised,
           borderRadius: BorderRadius.circular(_radius),
         ),
         child: Stack(
@@ -204,7 +206,7 @@ class _HistoryModeToggle extends StatelessWidget {
               height: _itemHeight,
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: AppColors.white,
+                  color: AppColors.textPrimary,
                   borderRadius: BorderRadius.circular(_radius - 4),
                   boxShadow: const [
                     BoxShadow(
@@ -263,7 +265,7 @@ class _ToggleCell extends StatelessWidget {
           duration: duration,
           curve: curve,
           style: _HistoryModeToggle._labelStyle.copyWith(
-            color: selected ? AppColors.textDark : AppColors.primary,
+            color: selected ? AppColors.onLight : AppColors.textSecondary,
           ),
           child: Text(label),
         ),
@@ -292,17 +294,13 @@ class _ClearButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
         decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.10),
+          color: AppColors.surfaceRaised,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.delete_rounded,
-              size: 14,
-              color: AppColors.error,
-            ),
+            Icon(Icons.delete_rounded, size: 14, color: AppColors.textPrimary),
             const SizedBox(width: 4),
             const Text(
               'Clear',
@@ -310,7 +308,7 @@ class _ClearButton extends StatelessWidget {
                 fontFamily: 'Poppins',
                 fontWeight: FontWeight.w700,
                 fontSize: 12,
-                color: AppColors.error,
+                color: AppColors.textPrimary,
               ),
             ),
           ],
