@@ -685,6 +685,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               return _TrackingCards(
                                 eta: _mapsController.etaToDestination ?? '—',
                                 distance: _mapsController.distanceLabel,
+                                onCancel: _mapsController.clearPin,
                               );
                             }
                             if (!_mapsController.resultsVisible) {
@@ -809,25 +810,80 @@ class _HomeSkeleton extends StatelessWidget {
 /// ETA + Distance cards shown below the search bar when tracking a confirmed
 /// destination. Compact green pills matching the app's design language.
 class _TrackingCards extends StatelessWidget {
-  const _TrackingCards({required this.eta, required this.distance});
+  const _TrackingCards({
+    required this.eta,
+    required this.distance,
+    required this.onCancel,
+  });
 
   final String eta;
   final String distance;
+  final VoidCallback onCancel;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(top: 12),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: _TrackingPill(label: 'ETA', value: eta),
+          Row(
+            children: [
+              Expanded(
+                child: _TrackingPill(label: 'ETA', value: eta),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _TrackingPill(label: 'Distance', value: distance),
+              ),
+            ],
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _TrackingPill(label: 'Distance', value: distance),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: _CancelTrackingButton(onTap: onCancel),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Ends the active destination pin and proximity alarm from its own row.
+class _CancelTrackingButton extends StatelessWidget {
+  const _CancelTrackingButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  static const _cancelRed = Color(0xFFFF5252);
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surfaceRaised,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.close_rounded, color: _cancelRed, size: 19),
+              SizedBox(width: 5),
+              Text(
+                'Cancel Alarm',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: _cancelRed,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

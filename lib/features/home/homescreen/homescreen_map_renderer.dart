@@ -217,6 +217,14 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer> {
         .createCircleAnnotationManager();
     _pinManager ??= await mapboxMap.annotations.createPointAnnotationManager();
 
+    // A restored proximity session can arrive before Mapbox has created its
+    // annotation managers. `_showPin` retains it in `_pinned`; render it now
+    // that the native map is ready.
+    final restoredPin = _pinned;
+    if (restoredPin != null) {
+      await _showPin(restoredPin, animateCamera: false);
+    }
+
     _cameraReady = true;
     _maybeFireReady();
 

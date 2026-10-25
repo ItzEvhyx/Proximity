@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -35,11 +36,13 @@ class MapsController extends ChangeNotifier {
     searchText.addListener(_onQueryChanged);
     searchFocus.addListener(_onFocusChanged);
     _loadHistory();
+    unawaited(_restoreActiveTracking());
   }
 
   /// How many recent pinned locations to keep; the rest are discarded.
   static const int _maxHistory = 5;
   static const String _historyPrefsKey = 'pinned_trips_v1';
+  static const String _activeTrackingPrefsKey = 'active_proximity_tracking_v1';
 
   final MapsSearchService _service;
 
@@ -163,6 +166,11 @@ class MapsController extends ChangeNotifier {
   bool _tracking = false;
   bool get tracking => _tracking;
 
+  // Prevent a late asynchronous restore from reviving a session the user has
+  // already explicitly cancelled in this controller's lifetime.
+  bool _trackingSessionCancelled = false;
+  int _trackingSessionVersion = 0;
+
   /// Which alert zone phases have already fired (to avoid re-triggering).
   final Set<int> _firedAlertPhases = {};
 
@@ -178,6 +186,10 @@ class MapsController extends ChangeNotifier {
   }) {
     _onShowPin = onShowPin;
     _onClearPin = onClearPin;
+    final destination = _tracking ? _searched : null;
+    if (destination != null) {
+      _onShowPin?.call(destination, animateCamera: false);
+    }
   }
 
   /// Seeds / refreshes the user's location. The first call also plants the red
@@ -189,6 +201,15 @@ class MapsController extends ChangeNotifier {
     if (first) {
       _initCurrentLocation(longitude, latitude);
       _startLocationUpdates();
+    }
+    if (_tracking) {
+      // Re-show a destination restored before the native map finished
+      // initializing, then replace its cached values with a fresh GPS fix.
+      final destination = _searched;
+      if (destination != null) {
+        _onShowPin?.call(destination, animateCamera: false);
+      }
+      _updateDistanceAndEta();
     }
   }
 
@@ -354,7 +375,7 @@ class MapsController extends ChangeNotifier {
         _confirmed = false;
         _searched = null;
         _locked = false;
-        _tracking = false;
+        stopTracking();
       }
 
       final text = searchText.text.trim();
@@ -669,9 +690,12 @@ class MapsController extends ChangeNotifier {
     _confirmedLng = frozen.longitude;
     _confirmedLat = frozen.latitude;
     _tracking = true;
+    _trackingSessionCancelled = false;
+    _trackingSessionVersion++;
     _firedAlertPhases.clear();
     _startLocationUpdates();
     _updateDistanceAndEta();
+    unawaited(_persistActiveTracking());
 
     // Start foreground service so the app survives in the background.
     unawaited(_startPersistentProximityTracking(frozen));
@@ -874,6 +898,90 @@ class MapsController extends ChangeNotifier {
     }
   }
 
+  // ── Durable active proximity session ──────────────────────────────────
+
+  /// Restores the destination and last visible ETA/distance after a cold app
+  /// launch. The foreground service independently continues the alarm while
+  /// the UI is gone; this record makes the Maps UI accurately reconnect to it.
+  Future<void> _restoreActiveTracking() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_activeTrackingPrefsKey);
+      if (raw == null || _trackingSessionCancelled || _tracking) return;
+
+      final data = jsonDecode(raw);
+      if (data is! Map<String, dynamic>) {
+        await prefs.remove(_activeTrackingPrefsKey);
+        return;
+      }
+      final longitude = data['longitude'];
+      final latitude = data['latitude'];
+      final name = data['name'];
+      if (longitude is! num || latitude is! num || name is! String) {
+        await prefs.remove(_activeTrackingPrefsKey);
+        return;
+      }
+
+      _searched = PlaceResult(
+        name: name,
+        address: data['address'] as String?,
+        longitude: longitude.toDouble(),
+        latitude: latitude.toDouble(),
+      );
+      _confirmed = true;
+      _locked = true;
+      _confirmedLng = longitude.toDouble();
+      _confirmedLat = latitude.toDouble();
+      _distanceToDestination = (data['distanceMeters'] as num?)?.toDouble();
+      _etaToDestination = data['eta'] as String?;
+      _tracking = true;
+      _startLocationUpdates();
+      notifyListeners();
+      _onShowPin?.call(_searched!, animateCamera: false);
+    } catch (_) {
+      // A corrupt session must never block Maps from opening. It will be
+      // replaced the next time the user confirms a destination.
+    }
+  }
+
+  Future<void> _persistActiveTracking() async {
+    if (!_tracking || _confirmedLng == null || _confirmedLat == null) return;
+    final destination = _searched;
+    if (destination == null) return;
+    final sessionVersion = _trackingSessionVersion;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      // A cancel or replacement might have happened while preferences were
+      // opening. Never let an older write revive that old destination.
+      if (!_tracking || sessionVersion != _trackingSessionVersion) return;
+      await prefs.setString(
+        _activeTrackingPrefsKey,
+        jsonEncode({
+          'name': destination.name,
+          'address': destination.address,
+          'longitude': _confirmedLng,
+          'latitude': _confirmedLat,
+          'distanceMeters': _distanceToDestination,
+          'eta': _etaToDestination,
+        }),
+      );
+    } catch (_) {
+      // The active foreground service remains the alarm fallback if local
+      // preference storage is temporarily unavailable.
+    }
+  }
+
+  Future<void> _clearPersistedActiveTracking() async {
+    final sessionVersion = _trackingSessionVersion;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (sessionVersion != _trackingSessionVersion) return;
+      await prefs.remove(_activeTrackingPrefsKey);
+    } catch (_) {
+      // Best effort. The foreground-service state is cleared alongside this.
+    }
+  }
+
   // ── Results collapse / expand ──────────────────────────────────────────
   /// Collapses the results list to just its header, leaving a reopen control.
   void collapseResults() {
@@ -988,6 +1096,10 @@ class MapsController extends ChangeNotifier {
       distance: distanceLabel,
     );
 
+    // Keep the value shown in the cards available immediately after the next
+    // app launch, before the first fresh location fix arrives.
+    unawaited(_persistActiveTracking());
+
     notifyListeners();
 
     // Check alert zone distances (sorted descending: first = farthest).
@@ -1004,6 +1116,8 @@ class MapsController extends ChangeNotifier {
 
   /// Stops proximity tracking (e.g. after alarm dismissed or user clears pin).
   void stopTracking() {
+    _trackingSessionCancelled = true;
+    _trackingSessionVersion++;
     _tracking = false;
     _distanceToDestination = null;
     _etaToDestination = null;
@@ -1014,6 +1128,7 @@ class MapsController extends ChangeNotifier {
     ProximityForegroundService.instance.stop();
     // Hide the floating overlay.
     OverlayService.instance.hide();
+    unawaited(_clearPersistedActiveTracking());
     if (!_mapTabActive) {
       _locationTimer?.cancel();
       _locationTimer = null;
