@@ -28,7 +28,7 @@ class VibrationService {
   bool _hasAmplitude = false;
 
   Future<void> _checkCapabilities() async {
-    _hasAmplitude = await Vibration.hasAmplitudeControl() ?? false;
+    _hasAmplitude = await Vibration.hasAmplitudeControl();
   }
 
   /// Starts a repeating vibration pattern based on the user's intensity pref.

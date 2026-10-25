@@ -52,6 +52,23 @@ class AppPrefs {
 
   static Future<void> clearLoggedInUserId() => _prefs.remove(_kUserId);
 
+  // ── App permission usage ────────────────────────────────────────────────
+  // Android permissions can only be revoked by the user in system settings.
+  // These flags let a user stop Proximity from using an already-granted
+  // capability without changing that Android-level grant.
+  static const String _kPermissionUsagePrefix = 'permission_usage_';
+
+  static bool isPermissionUsageEnabled(String permissionId) =>
+      _prefs.getBool('$_kPermissionUsagePrefix$permissionId') ?? true;
+
+  static Future<void> setPermissionUsageEnabled(
+    String permissionId,
+    bool enabled,
+  ) async {
+    await _prefs.setBool('$_kPermissionUsagePrefix$permissionId', enabled);
+    _syncToSqlite('$_kPermissionUsagePrefix$permissionId', enabled.toString());
+  }
+
   // ── Alarm sound ────────────────────────────────────────────────────────────
   static const String _kAlarmSound = 'selected_alarm_sound';
 
@@ -114,5 +131,39 @@ class AppPrefs {
   static Future<void> setVibrationIntensity(String key) async {
     await _prefs.setString(_kVibrationIntensity, key);
     _syncToSqlite('vibration_intensity', key);
+  }
+
+  // ── Train ride alerts ─────────────────────────────────────────────────────
+  static const String _kTrainRideAlerts = 'train_ride_alerts_enabled';
+  static const String _kTrainAutoDetect = 'train_auto_detect';
+  static const String _kTrainApproachLead = 'train_approach_lead_seconds';
+  static const String _kTrainAlertStyle = 'train_alert_style';
+
+  static bool get trainRideAlertsEnabled =>
+      _prefs.getBool(_kTrainRideAlerts) ?? false;
+  static bool get trainAutoDetect => _prefs.getBool(_kTrainAutoDetect) ?? true;
+  static int get trainApproachLeadSeconds =>
+      _prefs.getInt(_kTrainApproachLead) ?? 60;
+  static String get trainAlertStyle =>
+      _prefs.getString(_kTrainAlertStyle) ?? 'sound_vibrate';
+
+  static Future<void> setTrainRideAlertsEnabled(bool value) async {
+    await _prefs.setBool(_kTrainRideAlerts, value);
+    _syncToSqlite('train_ride_alerts_enabled', value.toString());
+  }
+
+  static Future<void> setTrainAutoDetect(bool value) async {
+    await _prefs.setBool(_kTrainAutoDetect, value);
+    _syncToSqlite('train_auto_detect', value.toString());
+  }
+
+  static Future<void> setTrainApproachLeadSeconds(int value) async {
+    await _prefs.setInt(_kTrainApproachLead, value);
+    _syncToSqlite('train_approach_lead_seconds', value.toString());
+  }
+
+  static Future<void> setTrainAlertStyle(String value) async {
+    await _prefs.setString(_kTrainAlertStyle, value);
+    _syncToSqlite('train_alert_style', value);
   }
 }

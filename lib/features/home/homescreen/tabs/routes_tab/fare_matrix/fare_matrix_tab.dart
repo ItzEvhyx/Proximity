@@ -73,14 +73,13 @@ class _FareMatrixTabState extends State<FareMatrixTab> {
   // ── Render gating ───────────────────────────────────────────────────────
   bool _contentReady = false;
   bool _imagesUnlocked = false;
+  bool _contentMountScheduled = false;
 
   @override
   void initState() {
     super.initState();
     _imagesUnlocked = widget.active;
-    SchedulerBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() => _contentReady = true);
-    });
+    _scheduleContentMount();
   }
 
   @override
@@ -89,6 +88,23 @@ class _FareMatrixTabState extends State<FareMatrixTab> {
     if (widget.active && !_imagesUnlocked) {
       setState(() => _imagesUnlocked = true);
     }
+    _scheduleContentMount();
+  }
+
+  /// Building the complete fare UI also decodes the rail-map asset.  Do that
+  /// after the shell's slide-in animation, not in the first frame of a tab
+  /// switch, so the navigation remains responsive on lower-end devices.
+  void _scheduleContentMount() {
+    if (_contentReady || !widget.active || _contentMountScheduled) return;
+    _contentMountScheduled = true;
+    SchedulerBinding.instance.addPostFrameCallback((_) async {
+      await Future<void>.delayed(const Duration(milliseconds: 340));
+      if (!mounted || !widget.active) {
+        _contentMountScheduled = false;
+        return;
+      }
+      setState(() => _contentReady = true);
+    });
   }
 
   void _setTransitType(TransitType t) {

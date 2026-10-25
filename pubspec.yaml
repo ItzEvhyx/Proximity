@@ -9,10 +9,6 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.8
-  video_player: ^2.11.1
   lottie: ^3.4.0
   flutter_dotenv: ^6.0.1
   google_sign_in: 6.2.1
@@ -25,11 +21,19 @@ dependencies:
   # with placeholder support so we can show skeleton loading while fetching.
   cached_network_image: ^3.4.1
   image_picker: ^1.2.3
+  # Reads the current Android permission state for the Settings controls.
+  # The app still requests a permission only from the feature that needs it.
+  permission_handler: ^12.0.3
   just_audio: ^0.10.6
   sensors_plus: ^7.1.0
   vibration: ^3.2.0
   volume_controller: ^3.5.0
   flutter_foreground_task: ^10.0.0
+  # Native Android/iOS geofence callbacks, including a background isolate.
+  native_geofence: ^1.3.1
+  # Exact, process-independent local notifications for station approaches.
+  flutter_local_notifications: ^22.3.2
+  timezone: ^0.11.2
   flutter_overlay_window: ^0.5.0
   flutter_svg: ^2.2.3
   sqflite: ^2.4.1
@@ -46,13 +50,13 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.4
 
-# Generates the app launcher icon from the Proximity logo.
+# Generates the app launcher icon from the current Proximity logo.
 # Run: dart run flutter_launcher_icons
 flutter_launcher_icons:
   android: true
   ios: true
   remove_alpha_ios: true
-  image_path: "public/assets/logos/proximity_icon_square_raw.png"
+  image_path: "public/assets/logos/proximity_logo.png"
 
 
 
@@ -68,12 +72,29 @@ flutter:
     - public/assets/audio/
     - public/assets/audio/calming alarms/
     - public/assets/audio/intense alarms/
-    - public/assets/fonts/inter/
-    - public/assets/fonts/poppins/
-    - public/assets/icons/
-    - public/assets/images/
-    - public/assets/logos/
-    - public/assets/splash/
+    # Font files declared below are bundled automatically. Listing their whole
+    # source folders here would also ship dozens of unused weights/styles.
+    - public/assets/icons/alarm_icon.svg
+    - public/assets/icons/bus_icon.svg
+    - public/assets/icons/calming_icon.svg
+    - public/assets/icons/car_icon.svg
+    - public/assets/icons/jeepney_icon.svg
+    - public/assets/icons/maps_icon.svg
+    - public/assets/icons/motorcycle_icon.svg
+    - public/assets/icons/revert_icon.svg
+    - public/assets/icons/routes_icon.svg
+    - public/assets/icons/settings_icon.svg
+    - public/assets/icons/train_icon.svg
+    - public/assets/icons/uv_express_icon.svg
+    - public/assets/icons/walk_icon.svg
+    - public/assets/images/email_otp_img.svg
+    - public/assets/images/forgot_lock_img.svg
+    - public/assets/images/forgot_mailbox_img.svg
+    - public/assets/images/no_network_img.svg
+    - public/assets/images/train_maps.png
+    - public/assets/logos/bus_vehicle.lottie
+    - public/assets/logos/proximity_icon_white.png
+    - public/assets/transit/
 
   fonts:
     - family: Poppins

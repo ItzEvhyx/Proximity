@@ -8,13 +8,18 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 import '../../../core/animations/tabs_transitions.dart';
 import '../../../core/global_services/claude_services.dart';
+import '../../../core/global_services/foreground_service.dart';
+import '../../../core/global_services/native_alarm_service.dart';
 import '../../../core/global_services/wake_service.dart';
 import '../../../core/navbar/navbar_widget.dart';
 import '../../../core/overlay/overlay_service.dart';
+import '../../../core/shared_prefs/shared_prefs.dart';
 import '../../../core/skeleton_loading/skeleton_loading.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/search_bar.dart';
 import '../alarm_dismissal_screen.dart';
+import '../../ride_tracking/presentation/ride_widgets.dart';
+import '../../ride_tracking/ride_controller.dart';
 import 'tabs/history_tab/history_tab.dart';
 import 'tabs/history_tab/past_routes/route_history_service.dart';
 import 'tabs/history_tab/past_routes/saved_route.dart';
@@ -48,6 +53,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _mapReady = false;
   bool _skeletonVisible = true;
   Timer? _readyTimeout;
+  bool _alarmVisible = false;
 
   late final MapsController _mapsController;
 
@@ -67,7 +73,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _mapsController = MapsController();
+    unawaited(RideController.instance.initialize());
     _mapsController.onAlarmTriggered = _onProximityAlarm;
+    FlutterForegroundTask.addTaskDataCallback(_onForegroundTaskData);
+    unawaited(NativeAlarmService.instance.initialize(_onNativeAlarm));
+    // A background foreground-task isolate can open the app after its UI was
+    // removed from Recents. Restore that persisted alarm once this shell has a
+    // navigator, rather than silently losing it during startup.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_restorePendingAlarm());
+    });
     // Safety net: reveal the UI even if the map never reports ready (e.g. no
     // network / stuck tiles) so the app is never stuck on the skeleton.
     _readyTimeout = Timer(const Duration(seconds: 8), _handleMapReady);
@@ -91,6 +106,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _readyTimeout?.cancel();
     _autoSelectTimer?.cancel();
+    FlutterForegroundTask.removeTaskDataCallback(_onForegroundTaskData);
     _mapsController.dispose();
     _speech.stop();
     // Ensure overlay is hidden if screen is disposed while tracking.
@@ -103,6 +119,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      unawaited(RideController.instance.processPendingGeofenceEvents());
       // App came back to foreground — hide the overlay since the in-app
       // UI is visible and the overlay would be redundant/distracting.
       OverlayService.instance.hide();
@@ -125,27 +142,78 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // ── Proximity alarm ────────────────────────────────────────────────────
 
   void _onProximityAlarm() {
-    if (!mounted) return;
-    // Wake the screen and show over lock screen (like the default Clock app).
-    WakeService.instance.wakeUpScreen();
-    // Bring the app to the foreground if it's in the background.
-    FlutterForegroundTask.launchApp('/');
-    // Navigate to the fullscreen alarm dismissal screen.
-    Navigator.of(context).push(
+    unawaited(
+      _showAlarm(
+        ProximityAlarmData(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          destinationName: _mapsController.activeDestinationName,
+          distance: _mapsController.distanceLabel,
+          eta: _mapsController.etaToDestination ?? '—',
+        ),
+      ),
+    );
+  }
+
+  void _onForegroundTaskData(Object data) {
+    if (data is! Map || data['type'] != 'background_alarm') return;
+    unawaited(
+      _showAlarm(ProximityAlarmData.fromMap(Map<Object?, Object?>.from(data))),
+    );
+  }
+
+  void _onNativeAlarm(ProximityAlarmData alarm) {
+    // This callback comes from tapping Android's full-screen notification. It
+    // has already been posted natively, so do not notify a second time.
+    unawaited(_showAlarm(alarm, postNativeNotification: false));
+  }
+
+  Future<void> _restorePendingAlarm() async {
+    final native = await NativeAlarmService.instance
+        .consumeNativePendingAlarm();
+    if (native != null) {
+      await _showAlarm(native, postNativeNotification: false);
+      return;
+    }
+    final background = await ProximityForegroundService.instance
+        .consumePendingAlarm();
+    if (background != null) await _showAlarm(background);
+  }
+
+  Future<void> _showAlarm(
+    ProximityAlarmData alarm, {
+    bool postNativeNotification = true,
+  }) async {
+    if (!mounted || _alarmVisible) return;
+    _alarmVisible = true;
+    await ProximityForegroundService.instance.markAlarmRinging(alarm);
+    if (postNativeNotification) {
+      await NativeAlarmService.instance.trigger(alarm);
+    }
+    if (!mounted) {
+      _alarmVisible = false;
+      return;
+    }
+
+    await Navigator.of(context).push(
       MaterialPageRoute(
         fullscreenDialog: true,
         builder: (_) => AlarmDismissalScreen(
-          distance: _mapsController.distanceLabel,
-          eta: _mapsController.etaToDestination ?? '—',
-          onDismissed: () {
-            _mapsController.stopTracking();
-            // Clear wake flags so the app doesn't permanently show over lock.
-            WakeService.instance.clearWakeFlags();
-            Navigator.of(context).pop();
+          distance: alarm.distance,
+          eta: alarm.eta,
+          destinationName: alarm.destinationName,
+          onSnoozed: () async {
+            // The selected slide/shake/solve method snoozes rather than ending
+            // the journey. Tracking survives and the background task can ring
+            // again after the snooze period.
+            await ProximityForegroundService.instance.snooze();
+            await NativeAlarmService.instance.clear();
+            await WakeService.instance.clearWakeFlags();
+            if (mounted) Navigator.of(context).pop();
           },
         ),
       ),
     );
+    _alarmVisible = false;
   }
 
   // ── History tab: re-pin trip ───────────────────────────────────────────
@@ -195,6 +263,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           _awaitingFinalResult = false;
         });
       }
+      return;
+    }
+
+    if (!AppPrefs.isPermissionUsageEnabled('microphone')) {
+      setState(() {
+        _speechError = 'Microphone access is turned off in Settings.';
+      });
       return;
     }
 
@@ -508,7 +583,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           onRouteTap: _onHistoryRouteTap,
         ),
       ),
-      const ProfileTab(),
+      ProfileTab(active: _tabIndex == 3),
     ];
 
     return Scaffold(
@@ -630,6 +705,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 ),
               ),
             ),
+
+          // Navbar, revealed together with the search bar.
+          const Positioned(
+            left: 16,
+            right: 16,
+            bottom: 92,
+            child: RideBanner(),
+          ),
 
           // Navbar, revealed together with the search bar.
           SafeArea(
@@ -917,7 +1000,7 @@ class _TranscriptionCard extends StatelessWidget {
 
 /// Dialog shown when tapping a trip card on the History tab.
 /// Shows the trip name, estimated time, distance, and a pin icon.
-/// Cancel (dark gray) dismisses; Confirm switches to maps tab and re-pins.
+/// Cancel dismisses; Confirm switches to the Maps tab and re-pins.
 class _RepinLocationDialog extends StatelessWidget {
   const _RepinLocationDialog({required this.trip, required this.onConfirm});
 
@@ -966,7 +1049,7 @@ class _RepinLocationDialog extends StatelessWidget {
                           fontFamily: 'Poppins',
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
+                          color: AppColors.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -1018,7 +1101,7 @@ class _RepinLocationDialog extends StatelessWidget {
                 // Pin icon
                 const Icon(
                   Icons.location_on,
-                  color: AppColors.primary,
+                  color: AppColors.textPrimary,
                   size: 48,
                 ),
               ],
@@ -1033,7 +1116,8 @@ class _RepinLocationDialog extends StatelessWidget {
                   child: OutlinedButton(
                     onPressed: () => Navigator.of(context).pop(),
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: AppColors.border),
+                      foregroundColor: AppColors.textPrimary,
+                      side: const BorderSide(color: AppColors.textMuted),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -1045,7 +1129,7 @@ class _RepinLocationDialog extends StatelessWidget {
                         fontFamily: 'Poppins',
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF4A4A4A), // slight dark gray
+                        color: AppColors.textPrimary,
                       ),
                     ),
                   ),
@@ -1204,7 +1288,7 @@ class _RouteMapToggle extends StatelessWidget {
                     fontFamily: 'Poppins',
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: !showMap ? AppColors.textDark : AppColors.primary,
+                    color: !showMap ? AppColors.surfaceHigh : AppColors.white,
                   ),
                 ),
               ),
@@ -1234,7 +1318,7 @@ class _RouteMapToggle extends StatelessWidget {
                     fontFamily: 'Poppins',
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: showMap ? AppColors.textDark : AppColors.primary,
+                    color: showMap ? AppColors.surfaceHigh : AppColors.white,
                   ),
                 ),
               ),
@@ -1450,7 +1534,7 @@ class _StaticMapViewState extends State<_StaticMapView> {
       mapbox.LineLayer(
         id: _routeLayerId,
         sourceId: _routeSourceId,
-        lineColor: AppColors.primary.value,
+        lineColor: AppColors.white.toARGB32(),
         lineWidth: 5.0,
         lineJoin: mapbox.LineJoin.ROUND,
         lineCap: mapbox.LineCap.ROUND,
@@ -1527,9 +1611,12 @@ class _StaticMapViewState extends State<_StaticMapView> {
               height: 280,
               child: mapbox.MapWidget(
                 key: const ValueKey('transit-route-modal-map'),
-                // ignore: experimental_member_use
-                androidHostingMode: mapbox.AndroidPlatformViewHostingMode.TLHC_HC,
-                styleUri: mapbox.MapboxStyles.STANDARD,
+                androidHostingMode:
+                    // This explicit mode avoids texture-rendering regressions
+                    // on Android devices supported by the current Mapbox SDK.
+                    // ignore: experimental_member_use
+                    mapbox.AndroidPlatformViewHostingMode.TLHC_HC,
+                styleUri: mapbox.MapboxStyles.DARK,
                 onMapCreated: _onMapCreated,
                 onStyleLoadedListener: _onStyleLoaded,
               ),

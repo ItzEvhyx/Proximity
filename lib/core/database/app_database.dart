@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -18,12 +16,14 @@ class AppDatabase {
 
   static Database? _db;
 
-  static const int _version = 1;
+  static const int _version = 2;
   static const String _dbName = 'proximity.db';
 
   // ── Table names ────────────────────────────────────────────────────────
   static const String tableSettings = 'user_settings';
   static const String tableTrips = 'pinned_trips';
+  static const String tableTransitStations = 'transit_stations';
+  static const String tableTransitMetadata = 'transit_metadata';
 
   /// Opens (or creates) the database. Safe to call multiple times.
   Future<Database> get database async {
@@ -73,10 +73,27 @@ class AppDatabase {
         pinned_at TEXT NOT NULL
       )
     ''');
+
+    await _createTransitTables(db);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // Future schema migrations go here.
+    if (oldVersion < 2) await _createTransitTables(db);
+  }
+
+  Future<void> _createTransitTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS $tableTransitStations (
+        id TEXT PRIMARY KEY,
+        data_json TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS $tableTransitMetadata (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      )
+    ''');
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -197,5 +214,47 @@ class AppDatabase {
     if (rows.isEmpty) return; // Fewer than max trips, nothing to trim.
     final cutoff = rows.first['pinned_at'] as String;
     await db.delete(tableTrips, where: 'pinned_at < ?', whereArgs: [cutoff]);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // TRANSIT DATA CACHE
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Future<int?> getTransitVersion() async {
+    final db = await database;
+    final rows = await db.query(
+      tableTransitMetadata,
+      columns: ['value'],
+      where: 'key = ?',
+      whereArgs: ['version'],
+      limit: 1,
+    );
+    return rows.isEmpty ? null : int.tryParse(rows.first['value'] as String);
+  }
+
+  Future<List<String>> getCachedTransitStations() async {
+    final db = await database;
+    final rows = await db.query(tableTransitStations, orderBy: 'id');
+    return rows.map((row) => row['data_json'] as String).toList();
+  }
+
+  Future<void> replaceTransitStations({
+    required int version,
+    required Map<String, String> stationsJson,
+  }) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete(tableTransitStations);
+      for (final entry in stationsJson.entries) {
+        await txn.insert(tableTransitStations, {
+          'id': entry.key,
+          'data_json': entry.value,
+        });
+      }
+      await txn.insert(tableTransitMetadata, {
+        'key': 'version',
+        'value': version.toString(),
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    });
   }
 }

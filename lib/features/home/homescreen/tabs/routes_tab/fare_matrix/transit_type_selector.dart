@@ -82,20 +82,23 @@ class _TransitChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = selected ? AppColors.onLight : AppColors.textSecondary;
+    const foreground = AppColors.textPrimary;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
         decoration: BoxDecoration(
-          color: selected ? AppColors.textPrimary : AppColors.surfaceRaised,
+          color: selected ? AppColors.surfaceHigh : AppColors.surfaceRaised,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border, width: 1),
+          border: Border.all(
+            color: selected ? AppColors.textPrimary : AppColors.border,
+            width: selected ? 1.5 : 1,
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            AssetIcon(transitTypeIcon(type), size: 16, color: fg),
+            AssetIcon(transitTypeIcon(type), size: 16, color: foreground),
             const SizedBox(width: 6),
             Text(
               transitTypeLabel(type),
@@ -103,7 +106,7 @@ class _TransitChip extends StatelessWidget {
                 fontFamily: 'Poppins',
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
-                color: fg,
+                color: foreground,
               ),
             ),
           ],

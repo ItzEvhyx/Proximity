@@ -1,7 +1,7 @@
 # DESIGN.md: Proximity UI Redesign
 
 > Instructions for the AI agent redesigning the **Proximity** Flutter app (Philippine commute companion).
-> **Scope: visual redesign only.** Features, navigation structure, screen flow, data layer (Supabase / PostGIS), Mapbox integration, and business logic stay exactly as they are. Do not add, remove, or rename features. Restyle what exists.
+> **Scope: visual redesign only.** Features, navigation structure, screen flow, data layer (Firebase / Cloud Firestore), Mapbox integration, and business logic stay exactly as they are. Do not add, remove, or rename features. Restyle what exists.
 
 ---
 
@@ -320,7 +320,7 @@ Notes:
 7. Run `flutter analyze` and test on a real device or emulator (glass/blur performance, contrast, small screens).
 
 ### Hard constraints
-- Do not change app logic, routing, state management, API calls, or Supabase schema.
+- Do not change app logic, routing, state management, API calls, or Firestore schema.
 - Do not add new features or screens.
 - Do not introduce any hue. Everything must be a gray from `#000000` to `#FFFFFF`.
 - Keep layouts responsive (small phones to large) and respect safe areas.

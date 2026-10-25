@@ -113,7 +113,7 @@ class _VibrationPickerSheetState extends State<_VibrationPickerSheet> {
     return Container(
       margin: const EdgeInsets.only(top: 80),
       decoration: const BoxDecoration(
-        color: AppColors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: Padding(
@@ -127,7 +127,7 @@ class _VibrationPickerSheetState extends State<_VibrationPickerSheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColors.border,
+                color: AppColors.textMuted,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -139,7 +139,7 @@ class _VibrationPickerSheetState extends State<_VibrationPickerSheet> {
                 fontFamily: 'Poppins',
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
-                color: AppColors.textDark,
+                color: AppColors.textPrimary,
               ),
             ),
             const SizedBox(height: 20),
@@ -160,7 +160,7 @@ class _VibrationPickerSheetState extends State<_VibrationPickerSheet> {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 decoration: BoxDecoration(
-                  color: AppColors.primary,
+                  color: AppColors.surfaceHigh,
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: const Center(
@@ -202,12 +202,10 @@ class _VibrationRow extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.primary.withValues(alpha: 0.06)
-              : AppColors.white,
+          color: isSelected ? AppColors.surfaceHigh : AppColors.surfaceRaised,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.border,
+            color: isSelected ? AppColors.textPrimary : AppColors.border,
             width: isSelected ? 1.5 : 1,
           ),
         ),
@@ -228,8 +226,8 @@ class _VibrationRow extends StatelessWidget {
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                       color: isSelected
-                          ? AppColors.primary
-                          : AppColors.textDark,
+                          ? AppColors.textPrimary
+                          : AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -262,7 +260,7 @@ class _VibrationBars extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? AppColors.primary : AppColors.textGrey;
+    final color = active ? AppColors.textPrimary : AppColors.textGrey;
 
     if (bars == 0) {
       // "Off" — show dots
@@ -325,7 +323,7 @@ class _RadioDot extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(
-          color: selected ? AppColors.primary : AppColors.border,
+          color: selected ? AppColors.textPrimary : AppColors.textMuted,
           width: 2,
         ),
       ),
@@ -336,7 +334,7 @@ class _RadioDot extends StatelessWidget {
                 height: 10,
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.primary,
+                  color: AppColors.textPrimary,
                 ),
               ),
             )

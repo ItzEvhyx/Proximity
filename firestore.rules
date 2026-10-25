@@ -8,5 +8,20 @@ service cloud.firestore {
       allow create: if request.auth != null && request.auth.uid == userId;
       allow read, update, delete: if request.auth != null && request.auth.uid == userId;
     }
+
+    // Versioned, read-only rail catalogue. Writes are performed only through
+    // trusted Firebase Admin tooling, which bypasses client security rules.
+    match /transit_config/{document} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+    match /transit_stations/{stationId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+    match /transit_segments/{segmentId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
   }
 }

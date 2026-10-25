@@ -5,9 +5,8 @@ import '../../../../../../../core/theme/app_colors.dart';
 /// Generic wrap-style payment/category indicator for non-train transits.
 /// Renders a 3-column grid of chips.
 ///
-/// Each chip shows a label; the selected chip gets a white background with
-/// dark text, unselected chips show primary-colored text on a transparent
-/// background. Switching animates smoothly.
+/// Each chip uses high-contrast white text. The selected chip gets a raised
+/// charcoal surface and white outline while unselected chips stay transparent.
 class OtherTransitPaymentIndicator<T> extends StatelessWidget {
   const OtherTransitPaymentIndicator({
     super.key,
@@ -83,8 +82,12 @@ class _PaymentChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? AppColors.white : Colors.transparent,
+          color: selected ? AppColors.surfaceHigh : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected ? AppColors.textPrimary : Colors.transparent,
+            width: 1.5,
+          ),
           boxShadow: selected
               ? const [
                   BoxShadow(
@@ -103,7 +106,7 @@ class _PaymentChip extends StatelessWidget {
             fontWeight: FontWeight.w700,
             fontSize: 11.5,
             height: 1.2,
-            color: selected ? AppColors.textDark : AppColors.primary,
+            color: AppColors.textPrimary,
           ),
         ),
       ),

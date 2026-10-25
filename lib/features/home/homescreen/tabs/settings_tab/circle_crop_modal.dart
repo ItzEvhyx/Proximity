@@ -15,13 +15,15 @@ import '../../../../../core/theme/app_colors.dart';
 /// final croppedBytes = await showCircleCropModal(context, imageFile);
 /// ```
 Future<Uint8List?> showCircleCropModal(
-    BuildContext context, File imageFile) async {
+  BuildContext context,
+  File imageFile,
+) async {
   return Navigator.of(context).push<Uint8List?>(
     PageRouteBuilder(
       opaque: false,
       barrierColor: Colors.black87,
-      pageBuilder: (_, __, ___) => _CircleCropModal(imageFile: imageFile),
-      transitionsBuilder: (_, animation, __, child) {
+      pageBuilder: (_, _, _) => _CircleCropModal(imageFile: imageFile),
+      transitionsBuilder: (_, animation, _, child) {
         return FadeTransition(opacity: animation, child: child);
       },
     ),
@@ -131,14 +133,17 @@ class _CircleCropModalState extends State<_CircleCropModal> {
 
     // Convert from widget coords → original image pixel coords.
     final srcLeft = (transformedTL.dx / fitScale).clamp(0.0, imgWidth);
-    final srcTop =
-        ((transformedTL.dy - imageTopOnScreen) / fitScale).clamp(0.0, imgHeight);
+    final srcTop = ((transformedTL.dy - imageTopOnScreen) / fitScale).clamp(
+      0.0,
+      imgHeight,
+    );
     final srcRight = (transformedBR.dx / fitScale).clamp(0.0, imgWidth);
-    final srcBottom =
-        ((transformedBR.dy - imageTopOnScreen) / fitScale).clamp(0.0, imgHeight);
+    final srcBottom = ((transformedBR.dy - imageTopOnScreen) / fitScale).clamp(
+      0.0,
+      imgHeight,
+    );
 
-    final srcRect =
-        Rect.fromLTRB(srcLeft, srcTop, srcRight, srcBottom);
+    final srcRect = Rect.fromLTRB(srcLeft, srcTop, srcRight, srcBottom);
 
     // Draw into a square canvas with a circular clip.
     final recorder = ui.PictureRecorder();
@@ -148,8 +153,7 @@ class _CircleCropModalState extends State<_CircleCropModal> {
     final destRect = Rect.fromLTWH(0, 0, size.width, size.height);
 
     // Clip to circle.
-    final circlePath = Path()
-      ..addOval(destRect);
+    final circlePath = Path()..addOval(destRect);
     canvas.clipPath(circlePath);
 
     // Draw the image portion.
@@ -321,7 +325,9 @@ class _CircleOverlayPainter extends CustomPainter {
 
     // Rule-of-thirds grid lines (clipped to circle).
     canvas.save();
-    canvas.clipPath(Path()..addOval(Rect.fromCircle(center: center, radius: radius)));
+    canvas.clipPath(
+      Path()..addOval(Rect.fromCircle(center: center, radius: radius)),
+    );
 
     final gridPaint = Paint()
       ..color = borderColor.withValues(alpha: 0.25)

@@ -72,15 +72,18 @@ class _Chip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = selected ? AppColors.onLight : AppColors.textSecondary;
+    const foreground = AppColors.textPrimary;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? AppColors.textPrimary : AppColors.surfaceRaised,
+          color: selected ? AppColors.surfaceHigh : AppColors.surfaceRaised,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(
+            color: selected ? AppColors.textPrimary : AppColors.border,
+            width: selected ? 1.5 : 1,
+          ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -88,7 +91,7 @@ class _Chip extends StatelessWidget {
             AssetIcon(
               'public/assets/icons/train_icon.svg',
               size: 16,
-              color: fg,
+              color: foreground,
             ),
             const SizedBox(width: 6),
             Text(
@@ -97,7 +100,7 @@ class _Chip extends StatelessWidget {
                 fontFamily: 'Poppins',
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
-                color: fg,
+                color: foreground,
               ),
             ),
           ],
@@ -206,25 +209,19 @@ class _TrainImageState extends State<_TrainImage>
       child: AspectRatio(
         aspectRatio: 16 / 9,
         child: shouldLoad
-            ? ColorFiltered(
-                colorFilter: const ColorFilter.mode(
-                  Colors.grey,
-                  BlendMode.saturation,
-                ),
-                child: CachedNetworkImage(
-                  imageUrl: widget.url,
-                  fit: BoxFit.cover,
-                  memCacheWidth: 400,
-                  fadeInDuration: Duration.zero,
-                  fadeOutDuration: Duration.zero,
-                  placeholder: (_, _) => const SkeletonBox(borderRadius: 0),
-                  errorWidget: (_, _, _) => const ColoredBox(
-                    color: AppColors.surfaceMuted,
-                    child: Center(
-                      child: Icon(
-                        Icons.broken_image_outlined,
-                        color: AppColors.hintGrey,
-                      ),
+            ? CachedNetworkImage(
+                imageUrl: widget.url,
+                fit: BoxFit.cover,
+                memCacheWidth: 400,
+                fadeInDuration: Duration.zero,
+                fadeOutDuration: Duration.zero,
+                placeholder: (_, _) => const SkeletonBox(borderRadius: 0),
+                errorWidget: (_, _, _) => const ColoredBox(
+                  color: AppColors.surfaceMuted,
+                  child: Center(
+                    child: Icon(
+                      Icons.broken_image_outlined,
+                      color: AppColors.hintGrey,
                     ),
                   ),
                 ),

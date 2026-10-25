@@ -207,7 +207,7 @@ class _AlarmSoundPickerSheetState extends State<_AlarmSoundPickerSheet> {
     return Container(
       margin: const EdgeInsets.only(top: 80),
       decoration: const BoxDecoration(
-        color: AppColors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: Column(
@@ -219,7 +219,7 @@ class _AlarmSoundPickerSheetState extends State<_AlarmSoundPickerSheet> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: AppColors.border,
+              color: AppColors.textMuted,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -235,7 +235,7 @@ class _AlarmSoundPickerSheetState extends State<_AlarmSoundPickerSheet> {
                   fontFamily: 'Poppins',
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textDark,
+                  color: AppColors.textPrimary,
                 ),
               ),
             ),
@@ -291,11 +291,11 @@ class _CategoryCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: AppColors.surfaceRaised,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: (isSelected || expanded)
-              ? AppColors.primary
+              ? AppColors.textPrimary
               : AppColors.border,
           width: (isSelected || expanded) ? 1.5 : 1,
         ),
@@ -324,14 +324,14 @@ class _CategoryCard extends StatelessWidget {
                       child: const Icon(
                         Icons.edit_rounded,
                         size: 20,
-                        color: AppColors.primary,
+                        color: AppColors.textPrimary,
                       ),
                     )
                   else
                     AssetIcon(
                       category.icon,
                       size: 28,
-                      color: AppColors.primary,
+                      color: AppColors.textPrimary,
                     ),
                   const SizedBox(width: 12),
                   // Title
@@ -342,7 +342,7 @@ class _CategoryCard extends StatelessWidget {
                         fontFamily: 'Poppins',
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textDark,
+                        color: AppColors.textPrimary,
                       ),
                     ),
                   ),
@@ -395,7 +395,7 @@ class _CategoryCard extends StatelessWidget {
                   Icon(
                     Icons.upload_rounded,
                     size: 18,
-                    color: AppColors.primary.withValues(alpha: 0.7),
+                    color: AppColors.textPrimary,
                   ),
                   const SizedBox(width: 10),
                   Text(
@@ -404,7 +404,7 @@ class _CategoryCard extends StatelessWidget {
                       fontFamily: 'Inter',
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
-                      color: AppColors.primary.withValues(alpha: 0.7),
+                      color: AppColors.textPrimary,
                     ),
                   ),
                 ],
@@ -435,9 +435,7 @@ class _OptionTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.primary.withValues(alpha: 0.06)
-              : Colors.transparent,
+          color: isSelected ? AppColors.surfaceHigh : Colors.transparent,
         ),
         child: Row(
           children: [
@@ -448,7 +446,9 @@ class _OptionTile extends StatelessWidget {
                   fontFamily: 'Inter',
                   fontSize: 14,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                  color: isSelected ? AppColors.primary : AppColors.textDark,
+                  color: isSelected
+                      ? AppColors.textPrimary
+                      : AppColors.textPrimary,
                 ),
               ),
             ),
@@ -473,7 +473,7 @@ class _RadioDot extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(
-          color: selected ? AppColors.primary : AppColors.border,
+          color: selected ? AppColors.textPrimary : AppColors.textMuted,
           width: 2,
         ),
       ),
@@ -484,7 +484,7 @@ class _RadioDot extends StatelessWidget {
                 height: 10,
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.primary,
+                  color: AppColors.textPrimary,
                 ),
               ),
             )

@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 
+import '../shared_prefs/shared_prefs.dart';
+
 /// Manages the system overlay window that displays ETA + Distance
 /// over other apps (like Google Maps' floating navigation card).
 ///
@@ -30,6 +32,10 @@ class OverlayService {
   /// Check if overlay permission is already granted (call at startup).
   Future<void> checkPermission() async {
     if (!Platform.isAndroid) return;
+    if (!AppPrefs.isPermissionUsageEnabled('overlay')) {
+      _permissionGranted = false;
+      return;
+    }
     _permissionGranted = await FlutterOverlayWindow.isPermissionGranted();
   }
 
@@ -37,6 +43,7 @@ class OverlayService {
   /// user toggles "Display over other apps". Returns true if granted.
   Future<bool> requestPermission() async {
     if (!Platform.isAndroid) return false;
+    if (!AppPrefs.isPermissionUsageEnabled('overlay')) return false;
     if (_permissionGranted) return true;
     _permissionGranted =
         await FlutterOverlayWindow.requestPermission() ?? false;
@@ -62,6 +69,7 @@ class OverlayService {
   /// If permission isn't granted, this is a no-op (notification fallback).
   Future<void> show() async {
     if (!Platform.isAndroid) return;
+    if (!AppPrefs.isPermissionUsageEnabled('overlay')) return;
 
     // Re-check permission in case it was granted after our last check.
     _permissionGranted = await FlutterOverlayWindow.isPermissionGranted();

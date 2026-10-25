@@ -7,6 +7,7 @@ import 'package:geolocator/geolocator.dart' as geo;
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/shared_prefs/shared_prefs.dart';
 import 'tabs/maps_tab/building_highlight_service.dart';
 import 'tabs/maps_tab/maps_controller.dart';
 import 'tabs/maps_tab/place_result.dart';
@@ -449,22 +450,7 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer> {
     _liveResolveTimer?.cancel();
     _stopRadar();
     unawaited(_clearBuildingHighlight());
-    () async {
-      try {
-        if (_pinAnnotation != null) await _pinManager?.delete(_pinAnnotation!);
-      } catch (_) {}
-      try {
-        if (_destPinAnnotation != null)
-          await _pinManager?.delete(_destPinAnnotation!);
-      } catch (_) {}
-      try {
-        await _radarManager?.deleteAll();
-      } catch (_) {}
-      _pinAnnotation = null;
-      _destPinAnnotation = null;
-      _radarRings.clear();
-      _radarDot = null;
-    }();
+    unawaited(_deleteMapAnnotations());
     setState(() {
       _pinned = null;
       _pinScreen = null;
@@ -472,6 +458,26 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer> {
       _dragging = false;
       _locked = false;
     });
+  }
+
+  Future<void> _deleteMapAnnotations() async {
+    try {
+      final pin = _pinAnnotation;
+      if (pin != null) await _pinManager?.delete(pin);
+    } catch (_) {}
+    try {
+      final destinationPin = _destPinAnnotation;
+      if (destinationPin != null) {
+        await _pinManager?.delete(destinationPin);
+      }
+    } catch (_) {}
+    try {
+      await _radarManager?.deleteAll();
+    } catch (_) {}
+    _pinAnnotation = null;
+    _destPinAnnotation = null;
+    _radarRings.clear();
+    _radarDot = null;
   }
 
   // ── Radar animation (native, matches the app's radar look) ─────────────
@@ -641,6 +647,7 @@ class _HomescreenMapRendererState extends State<HomescreenMapRenderer> {
   }
 
   Future<geo.Position?> _requestUserLocation() async {
+    if (!AppPrefs.isPermissionUsageEnabled('location')) return null;
     if (!await geo.Geolocator.isLocationServiceEnabled()) return null;
     var permission = await geo.Geolocator.checkPermission();
     if (permission == geo.LocationPermission.denied) {

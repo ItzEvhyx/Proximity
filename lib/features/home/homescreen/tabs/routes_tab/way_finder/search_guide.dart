@@ -214,9 +214,10 @@ class _SearchGuideSheetState extends State<_SearchGuideSheet> {
       padding: EdgeInsets.only(bottom: bottomInset),
       child: Container(
         height: screenH * 0.70,
-        decoration: const BoxDecoration(
-          color: AppColors.white,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border.all(color: AppColors.border),
         ),
         child: Column(
           children: [
@@ -226,7 +227,7 @@ class _SearchGuideSheetState extends State<_SearchGuideSheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColors.hintGrey.withValues(alpha: 0.4),
+                color: AppColors.textMuted,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -239,7 +240,7 @@ class _SearchGuideSheetState extends State<_SearchGuideSheet> {
                 fontFamily: 'Poppins',
                 fontWeight: FontWeight.w700,
                 fontSize: 20,
-                color: AppColors.textDark,
+                color: AppColors.textPrimary,
               ),
             ),
             const SizedBox(height: 20),
@@ -250,14 +251,14 @@ class _SearchGuideSheetState extends State<_SearchGuideSheet> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Timeline: green pin → dashed → red pin
+                  // Timeline linking the two locations.
                   Column(
                     children: [
                       const SizedBox(height: 14),
                       const Icon(
                         Icons.location_on,
                         size: 22,
-                        color: AppColors.primary,
+                        color: AppColors.textPrimary,
                       ),
                       ...List.generate(
                         3,
@@ -267,7 +268,7 @@ class _SearchGuideSheetState extends State<_SearchGuideSheet> {
                             width: 2.5,
                             height: 5,
                             decoration: BoxDecoration(
-                              color: AppColors.primary,
+                              color: AppColors.textSecondary,
                               borderRadius: BorderRadius.circular(1),
                             ),
                           ),
@@ -277,7 +278,7 @@ class _SearchGuideSheetState extends State<_SearchGuideSheet> {
                       const Icon(
                         Icons.location_on,
                         size: 22,
-                        color: AppColors.error,
+                        color: AppColors.textSecondary,
                       ),
                     ],
                   ),
@@ -317,7 +318,8 @@ class _SearchGuideSheetState extends State<_SearchGuideSheet> {
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.08),
+                      color: AppColors.surfaceHigh,
+                      border: Border.all(color: AppColors.border),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Row(
@@ -326,7 +328,7 @@ class _SearchGuideSheetState extends State<_SearchGuideSheet> {
                         Icon(
                           Icons.my_location_rounded,
                           size: 18,
-                          color: AppColors.primary,
+                          color: AppColors.textPrimary,
                         ),
                         SizedBox(width: 8),
                         Text(
@@ -335,7 +337,7 @@ class _SearchGuideSheetState extends State<_SearchGuideSheet> {
                             fontFamily: 'Poppins',
                             fontWeight: FontWeight.w600,
                             fontSize: 13,
-                            color: AppColors.primary,
+                            color: AppColors.textPrimary,
                           ),
                         ),
                       ],
@@ -351,7 +353,7 @@ class _SearchGuideSheetState extends State<_SearchGuideSheet> {
               child: _loading
                   ? const Center(
                       child: CircularProgressIndicator(
-                        color: AppColors.primary,
+                        color: AppColors.textPrimary,
                         strokeWidth: 2.5,
                       ),
                     )
@@ -400,10 +402,10 @@ class _SearchField extends StatelessWidget {
       height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: AppColors.surfaceHigh,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: isActive ? AppColors.primary : AppColors.border,
+          color: isActive ? AppColors.textPrimary : AppColors.border,
           width: isActive ? 1.5 : 1,
         ),
       ),
@@ -412,20 +414,25 @@ class _SearchField extends StatelessWidget {
           controller: controller,
           focusNode: focusNode,
           textInputAction: TextInputAction.search,
-          cursorColor: AppColors.primary,
+          cursorColor: AppColors.textPrimary,
           style: const TextStyle(
             fontFamily: 'Inter',
             fontSize: 15,
-            color: AppColors.textDark,
+            color: AppColors.textPrimary,
           ),
           decoration: InputDecoration(
             isCollapsed: true,
+            // The surrounding route card supplies the visual surface. Opt out
+            // of the app-wide filled-field theme so it does not add a second
+            // #2C2C2C container around the typed text.
+            filled: false,
+            fillColor: Colors.transparent,
             border: InputBorder.none,
             hintText: hint,
             hintStyle: const TextStyle(
               fontFamily: 'Inter',
               fontSize: 15,
-              color: AppColors.hintGrey,
+              color: AppColors.textMuted,
             ),
           ),
         ),
@@ -459,7 +466,7 @@ class _ResultRow extends StatelessWidget {
                       fontFamily: 'Poppins',
                       fontWeight: FontWeight.w700,
                       fontSize: 14,
-                      color: AppColors.textDark,
+                      color: AppColors.textPrimary,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -469,7 +476,7 @@ class _ResultRow extends StatelessWidget {
                       style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 12,
-                        color: AppColors.hintGrey,
+                        color: AppColors.textSecondary,
                       ),
                     ),
                   if (place.address != null)
@@ -478,7 +485,7 @@ class _ResultRow extends StatelessWidget {
                       style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 12,
-                        color: AppColors.hintGrey,
+                        color: AppColors.textSecondary,
                       ),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
@@ -487,7 +494,11 @@ class _ResultRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            const Icon(Icons.location_on, color: AppColors.primary, size: 24),
+            const Icon(
+              Icons.location_on,
+              color: AppColors.textPrimary,
+              size: 24,
+            ),
           ],
         ),
       ),

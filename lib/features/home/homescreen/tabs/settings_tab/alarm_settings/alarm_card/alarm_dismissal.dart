@@ -24,8 +24,6 @@ const _soundAssets = {
   'loud_alarm': 'public/assets/audio/intense alarms/loud_alarm.mp3',
 };
 
-const _defaultKey = 'slide';
-
 /// Dismiss Method screen — interactive preview of each dismiss style.
 class DismissMethodScreen extends StatefulWidget {
   const DismissMethodScreen({super.key});
@@ -140,7 +138,7 @@ class _DismissMethodScreenState extends State<DismissMethodScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.white,
+      backgroundColor: AppColors.bg,
       body: SafeArea(
         bottom: false,
         child: Stack(
@@ -155,7 +153,7 @@ class _DismissMethodScreenState extends State<DismissMethodScreen> {
                       vertical: 14,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.white,
+                      color: AppColors.surfaceRaised,
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
@@ -175,7 +173,7 @@ class _DismissMethodScreenState extends State<DismissMethodScreen> {
                             child: Icon(
                               Icons.chevron_left_rounded,
                               size: 28,
-                              color: AppColors.primary,
+                              color: AppColors.textPrimary,
                             ),
                           ),
                         ),
@@ -185,7 +183,7 @@ class _DismissMethodScreenState extends State<DismissMethodScreen> {
                             fontFamily: 'Poppins',
                             fontSize: 17,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.textDark,
+                            color: AppColors.textPrimary,
                           ),
                         ),
                       ],
@@ -253,7 +251,7 @@ class _DismissMethodScreenState extends State<DismissMethodScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   decoration: BoxDecoration(
-                    color: AppColors.primary,
+                    color: AppColors.surfaceHigh,
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
@@ -294,10 +292,10 @@ class _DismissMethodScreenState extends State<DismissMethodScreen> {
       onTap: () => _onCardTap(key),
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: AppColors.surfaceRaised,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.border,
+            color: isSelected ? AppColors.textPrimary : AppColors.border,
             width: isSelected ? 2 : 1,
           ),
           boxShadow: [
@@ -324,7 +322,7 @@ class _DismissMethodScreenState extends State<DismissMethodScreen> {
                             fontFamily: 'Poppins',
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.textDark,
+                            color: AppColors.textPrimary,
                           ),
                         ),
                         if (isDefault) ...[
@@ -350,12 +348,12 @@ class _DismissMethodScreenState extends State<DismissMethodScreen> {
                       height: 24,
                       decoration: const BoxDecoration(
                         shape: BoxShape.circle,
-                        color: AppColors.primary,
+                        color: AppColors.textPrimary,
                       ),
                       child: const Icon(
                         Icons.check_rounded,
                         size: 14,
-                        color: AppColors.white,
+                        color: AppColors.textPrimary,
                       ),
                     ),
                   ),
@@ -449,7 +447,7 @@ class _SlideWidgetState extends State<_SlideWidget> {
                       child: const Center(
                         child: Icon(
                           Icons.double_arrow_rounded,
-                          color: AppColors.primary,
+                          color: AppColors.onLight,
                           size: 24,
                         ),
                       ),
@@ -900,7 +898,7 @@ class _SolveWidgetState extends State<_SolveWidget>
                 fontFamily: 'Poppins',
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
-                color: AppColors.textDark,
+                color: AppColors.textPrimary,
               ),
             ),
             const SizedBox(width: 10),
@@ -912,7 +910,7 @@ class _SolveWidgetState extends State<_SolveWidget>
                 fontFamily: 'Poppins',
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
-                color: AppColors.textDark,
+                color: AppColors.textPrimary,
               ),
             ),
             const SizedBox(width: 10),
@@ -940,7 +938,7 @@ class _SolveWidgetState extends State<_SolveWidget>
                     fontFamily: 'Poppins',
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textDark,
+                    color: AppColors.textPrimary,
                   ),
                   decoration: const InputDecoration(
                     border: InputBorder.none,
@@ -968,7 +966,7 @@ class _NumberBox extends StatelessWidget {
       width: 52,
       height: 52,
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: AppColors.surfaceHigh,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: AppColors.primary.withValues(alpha: 0.5),
@@ -982,7 +980,7 @@ class _NumberBox extends StatelessWidget {
             fontFamily: 'Poppins',
             fontSize: 18,
             fontWeight: FontWeight.w700,
-            color: AppColors.textDark,
+            color: AppColors.textPrimary,
           ),
         ),
       ),

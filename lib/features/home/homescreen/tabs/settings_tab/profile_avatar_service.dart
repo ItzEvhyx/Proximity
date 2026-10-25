@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../../../core/config/env.dart';
 import '../../../../../core/firebase/firebase_client.dart';
+import '../../../../../core/shared_prefs/shared_prefs.dart';
 import 'circle_crop_modal.dart';
 
 /// Handles profile avatar picking, cropping, uploading to Cloudinary, and
@@ -27,6 +28,16 @@ class ProfileAvatarService {
   /// Opens the device gallery restricted to images and returns the picked
   /// [File], or null if the user cancelled or picked an unsupported format.
   Future<File?> pickImage(BuildContext context) async {
+    if (!AppPrefs.isPermissionUsageEnabled('photo_library')) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Photo library access is turned off in Settings.'),
+          ),
+        );
+      }
+      return null;
+    }
     final XFile? xFile = await _picker.pickImage(
       source: ImageSource.gallery,
       maxWidth: 1024,

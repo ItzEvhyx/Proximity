@@ -6,13 +6,12 @@ import 'glass_container.dart';
 /// Floating location search bar shared by the Maps and Routes tabs.
 ///
 /// A white pill with the brand alarm-clock icon, an editable "Search
-/// Location..." field, and microphone + search icons (from the Material icon
-/// library) on the right. Tapping anywhere on the pill focuses the field so
+/// Location..." field, and microphone icon on the right. Tapping anywhere on
+/// the pill focuses the field so
 /// the user can type immediately.
 ///
 /// Pass a [controller] to read/observe the text, or use [onChanged] /
-/// [onSubmitted] callbacks. [onMicTap] and [onSearchTap] handle the trailing
-/// icons; [onSearchTap] falls back to submitting the current text.
+/// [onSubmitted] callbacks. [onMicTap] handles voice input.
 class LocationSearchBar extends StatefulWidget {
   const LocationSearchBar({
     super.key,
@@ -22,7 +21,6 @@ class LocationSearchBar extends StatefulWidget {
     this.onChanged,
     this.onSubmitted,
     this.onMicTap,
-    this.onSearchTap,
     this.micActive = false,
     this.disabled = false,
     this.showMic = true,
@@ -34,7 +32,6 @@ class LocationSearchBar extends StatefulWidget {
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
   final VoidCallback? onMicTap;
-  final ValueChanged<String>? onSearchTap;
 
   /// When true the mic is actively listening; shown in an accent "recording"
   /// state.
@@ -177,18 +174,6 @@ class _LocationSearchBarState extends State<LocationSearchBar> {
                   ),
                   const SizedBox(width: 10),
                 ],
-                _ActionIcon(
-                  icon: Icons.search_rounded,
-                  color: iconColor,
-                  onTap: () {
-                    final text = _controller.text;
-                    if (widget.onSearchTap != null) {
-                      widget.onSearchTap!(text);
-                    } else {
-                      widget.onSubmitted?.call(text);
-                    }
-                  },
-                ),
               ],
             ),
           ),

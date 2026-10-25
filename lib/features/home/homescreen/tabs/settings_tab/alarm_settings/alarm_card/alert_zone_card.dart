@@ -211,7 +211,7 @@ class _AlertZonePickerSheetState extends State<_AlertZonePickerSheet>
     return Container(
       margin: const EdgeInsets.only(top: 80),
       decoration: const BoxDecoration(
-        color: AppColors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: Padding(
@@ -231,7 +231,7 @@ class _AlertZonePickerSheetState extends State<_AlertZonePickerSheet>
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.border,
+                  color: AppColors.textMuted,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -243,7 +243,7 @@ class _AlertZonePickerSheetState extends State<_AlertZonePickerSheet>
                   fontFamily: 'Poppins',
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textDark,
+                  color: AppColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 6),
@@ -295,7 +295,7 @@ class _AlertZonePickerSheetState extends State<_AlertZonePickerSheet>
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: AppColors.primary.withValues(alpha: 0.4),
+                        color: AppColors.textSecondary,
                         width: 1.5,
                       ),
                     ),
@@ -305,7 +305,7 @@ class _AlertZonePickerSheetState extends State<_AlertZonePickerSheet>
                         Icon(
                           Icons.add_rounded,
                           size: 18,
-                          color: AppColors.primary,
+                          color: AppColors.textPrimary,
                         ),
                         const SizedBox(width: 6),
                         Text(
@@ -314,7 +314,7 @@ class _AlertZonePickerSheetState extends State<_AlertZonePickerSheet>
                             fontFamily: 'Poppins',
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.primary,
+                            color: AppColors.textPrimary,
                           ),
                         ),
                       ],
@@ -330,7 +330,7 @@ class _AlertZonePickerSheetState extends State<_AlertZonePickerSheet>
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   decoration: BoxDecoration(
-                    color: AppColors.primary,
+                    color: AppColors.surfaceHigh,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: const Center(
@@ -366,6 +366,7 @@ class _UnitToggle extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(30),
+        color: AppColors.surfaceRaised,
         border: Border.all(color: AppColors.border, width: 1.5),
       ),
       child: Row(
@@ -391,7 +392,7 @@ class _UnitToggle extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary : Colors.transparent,
+          color: selected ? AppColors.surfaceHigh : Colors.transparent,
           borderRadius: BorderRadius.circular(28),
         ),
         child: Center(
@@ -401,7 +402,7 @@ class _UnitToggle extends StatelessWidget {
               fontFamily: 'Poppins',
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: selected ? AppColors.white : AppColors.textDark,
+              color: AppColors.textPrimary,
             ),
           ),
         ),
@@ -468,6 +469,7 @@ class _PhaseInput extends StatelessWidget {
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
+                  color: AppColors.surfaceHigh,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                     color: hasError ? AppColors.error : AppColors.border,
@@ -486,7 +488,7 @@ class _PhaseInput extends StatelessWidget {
                     fontFamily: 'Inter',
                     fontSize: 15,
                     fontWeight: FontWeight.w500,
-                    color: AppColors.textDark,
+                    color: AppColors.textPrimary,
                   ),
                   decoration: InputDecoration(
                     hintText: hint ?? 'Distance',
@@ -509,7 +511,7 @@ class _PhaseInput extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               decoration: BoxDecoration(
-                color: AppColors.primary,
+                color: AppColors.surfaceHigh,
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Text(

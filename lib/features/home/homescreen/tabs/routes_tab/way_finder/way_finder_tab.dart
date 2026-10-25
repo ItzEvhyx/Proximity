@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
@@ -5,6 +7,9 @@ import '../../../../../../core/animations/screen_transitions.dart';
 import '../../../../../../core/global_services/claude_services.dart';
 import '../../../../../../core/skeleton_loading/skeleton_loading.dart';
 import '../../../../../../core/theme/app_colors.dart';
+import '../../../../../ride_tracking/domain/models.dart';
+import '../../../../../ride_tracking/presentation/ride_widgets.dart';
+import '../../../../../ride_tracking/ride_controller.dart';
 import '../../../../../../core/widgets/asset_icon.dart';
 import '../../history_tab/past_routes/route_history_service.dart';
 import '../../history_tab/past_routes/saved_route.dart';
@@ -33,6 +38,7 @@ class WayFinderTab extends StatefulWidget {
 class WayFinderTabState extends State<WayFinderTab> {
   TravelMode _travelMode = TravelMode.drive;
   bool _contentReady = false;
+  bool _contentMountScheduled = false;
 
   // Route data (populated after Claude returns)
   RouteResult? _routeResult;
@@ -44,12 +50,32 @@ class WayFinderTabState extends State<WayFinderTab> {
   @override
   void initState() {
     super.initState();
-    SchedulerBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() => _contentReady = true);
+    _scheduleContentMount();
+  }
+
+  @override
+  void didUpdateWidget(covariant WayFinderTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _scheduleContentMount();
+  }
+
+  /// Keep the route tab's first animation lightweight. The real content is
+  /// mounted after it has settled, while the existing skeleton is visible.
+  void _scheduleContentMount() {
+    if (_contentReady || !widget.active || _contentMountScheduled) return;
+    _contentMountScheduled = true;
+    SchedulerBinding.instance.addPostFrameCallback((_) async {
+      await Future<void>.delayed(const Duration(milliseconds: 340));
+      if (!mounted || !widget.active) {
+        _contentMountScheduled = false;
+        return;
+      }
+      setState(() => _contentReady = true);
     });
   }
 
   void _onClear() {
+    RideController.instance.clearPlannedTrip();
     setState(() {
       _routeResult = null;
       _routeError = null;
@@ -59,6 +85,9 @@ class WayFinderTabState extends State<WayFinderTab> {
   }
 
   void _onTravelModeChanged(TravelMode m) {
+    if (m != TravelMode.transit) {
+      RideController.instance.clearPlannedTrip();
+    }
     setState(() => _travelMode = m);
     // Re-fetch route with new mode if we already have origin + destination.
     if (_origin != null && _destination != null) {
@@ -104,6 +133,17 @@ class WayFinderTabState extends State<WayFinderTab> {
           _routeResult = result;
           _routeLoading = false;
         });
+        if (_travelMode == TravelMode.transit) {
+          unawaited(
+            RideController.instance.setPlannedTripFromEndpoints(
+              origin: GeoPoint(_origin!.latitude, _origin!.longitude),
+              destination: GeoPoint(
+                _destination!.latitude,
+                _destination!.longitude,
+              ),
+            ),
+          );
+        }
         // Save to route history for the Past Routes tab.
         _saveToHistory(result);
       }
@@ -329,6 +369,14 @@ class WayFinderTabState extends State<WayFinderTab> {
                   ],
                 ),
               ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Center(
+            child: TextButton.icon(
+              onPressed: () => showManualRideSheet(context),
+              icon: const Icon(Icons.train_rounded),
+              label: const Text("I'm on the train"),
             ),
           ),
         ],

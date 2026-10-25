@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart' as geo;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../../core/global_services/foreground_service.dart';
+import '../../../../../core/global_services/native_alarm_service.dart';
 import '../../../../../core/database/app_database.dart';
 import '../../../../../core/overlay/overlay_service.dart';
 import '../../../../../core/shared_prefs/shared_prefs.dart';
@@ -221,6 +222,7 @@ class MapsController extends ChangeNotifier {
   }
 
   void _startLocationUpdates() {
+    if (!AppPrefs.isPermissionUsageEnabled('location')) return;
     // Location polling is only needed while the map is visible, except for an
     // active proximity alarm where distance updates must keep running.
     if (!_mapTabActive && !_tracking) return;
@@ -250,6 +252,11 @@ class MapsController extends ChangeNotifier {
   /// Reads the current position; if the user has moved meaningfully, refreshes
   /// distances, the nearby-landmarks list, and the red current-location pin.
   Future<void> _pollLocation() async {
+    if (!AppPrefs.isPermissionUsageEnabled('location')) {
+      _locationTimer?.cancel();
+      _locationTimer = null;
+      return;
+    }
     geo.Position pos;
     try {
       pos = await geo.Geolocator.getCurrentPosition(
@@ -667,10 +674,7 @@ class MapsController extends ChangeNotifier {
     _updateDistanceAndEta();
 
     // Start foreground service so the app survives in the background.
-    ProximityForegroundService.instance.start(
-      title: 'Proximity alarm active',
-      text: 'Tracking distance to ${frozen.name}',
-    );
+    unawaited(_startPersistentProximityTracking(frozen));
 
     // Show the floating overlay immediately so it's ready before backgrounding.
     OverlayService.instance.show();
@@ -679,6 +683,24 @@ class MapsController extends ChangeNotifier {
 
     // Re-draw the pin at the confirmed coordinate, locked (no camera move).
     _onShowPin?.call(frozen, animateCamera: false);
+  }
+
+  Future<void> _startPersistentProximityTracking(
+    PlaceResult destination,
+  ) async {
+    await ProximityForegroundService.instance.start(
+      title: 'Proximity alarm active',
+      text: 'Tracking distance to ${destination.name}',
+      destinationLatitude: destination.latitude,
+      destinationLongitude: destination.longitude,
+      destinationName: destination.name,
+      // The background isolate owns the durable alert. Use the outermost
+      // configured phase so it can raise the same first alert as the UI.
+      alertZoneMeters: AppPrefs.alertZoneDistances.reduce(math.max),
+    );
+    // Run after notification/battery prompts so Android doesn't try to stack
+    // multiple system settings surfaces at once.
+    await NativeAlarmService.instance.requestFullScreenIntentAccessIfNeeded();
   }
 
   /// Removes a saved trip from the user's history (e.g. via the trash button).
@@ -939,8 +961,9 @@ class MapsController extends ChangeNotifier {
     final lat = _userLat;
     final destLng = _confirmedLng;
     final destLat = _confirmedLat;
-    if (lng == null || lat == null || destLng == null || destLat == null)
+    if (lng == null || lat == null || destLng == null || destLat == null) {
       return;
+    }
 
     final dist = _haversineMeters(lat, lng, destLat, destLng);
     _distanceToDestination = dist;
@@ -1005,6 +1028,9 @@ class MapsController extends ChangeNotifier {
     if (d < 1000) return '${d.round()} m';
     return '${(d / 1000).toStringAsFixed(1)} km';
   }
+
+  /// Name shown by the alarm notification and full-screen alarm UI.
+  String get activeDestinationName => _searched?.name ?? 'your destination';
 
   @override
   void dispose() {

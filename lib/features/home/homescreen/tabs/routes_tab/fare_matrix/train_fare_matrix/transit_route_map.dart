@@ -1,33 +1,28 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
-import '../../../../../../../core/global_services/cloudinary_services.dart';
-import '../../../../../../../core/skeleton_loading/skeleton_loading.dart';
 import '../../../../../../../core/theme/app_colors.dart';
 import 'transit_categories.dart';
 import 'view_table_screen.dart';
 
-/// Dark card showing the rail transit route map image + interchange info.
-/// The route map image is fetched from Cloudinary. Tapping it opens a
-/// full-screen pinch-zoom modal.
+/// Dark card showing the bundled rail transit route map + interchange info.
+/// Tapping it opens a full-screen pinch-zoom modal.
 class TransitRouteMap extends StatelessWidget {
   const TransitRouteMap({super.key, required this.category});
 
   final FareCategory category;
+  static const _mapAsset = 'public/assets/images/train_maps.png';
 
-  void _openMapModal(BuildContext context, String imageUrl) {
+  void _openMapModal(BuildContext context) {
     showDialog(
       context: context,
       barrierColor: Colors.black87,
       barrierDismissible: true,
-      builder: (_) => _RouteMapModal(imageUrl: imageUrl),
+      builder: (_) => const _RouteMapModal(assetPath: _mapAsset),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl = CloudinaryService.instance.trainRoutesUrl;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -96,36 +91,16 @@ class TransitRouteMap extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 10),
-                // Route map image from Cloudinary — tap to open full-screen
+                // Bundled route map — tap to open full-screen.
                 GestureDetector(
-                  onTap: () => _openMapModal(context, imageUrl),
+                  onTap: () => _openMapModal(context),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(14),
-                    child: ColorFiltered(
-                      colorFilter: const ColorFilter.mode(
-                        Colors.grey,
-                        BlendMode.saturation,
-                      ),
-                      child: CachedNetworkImage(
-                        imageUrl: imageUrl,
-                        width: double.infinity,
-                        fit: BoxFit.contain,
-                        memCacheWidth: 600,
-                        fadeInDuration: Duration.zero,
-                        fadeOutDuration: Duration.zero,
-                        placeholder: (_, _) =>
-                            const SkeletonBox(height: 200, borderRadius: 0),
-                        errorWidget: (_, _, _) => Container(
-                          height: 200,
-                          color: AppColors.surfaceMuted,
-                          child: const Center(
-                            child: Icon(
-                              Icons.broken_image_outlined,
-                              color: AppColors.hintGrey,
-                            ),
-                          ),
-                        ),
-                      ),
+                    child: Image.asset(
+                      _mapAsset,
+                      width: double.infinity,
+                      fit: BoxFit.contain,
+                      filterQuality: FilterQuality.medium,
                     ),
                   ),
                 ),
@@ -311,9 +286,9 @@ class _LineBadge extends StatelessWidget {
 
 /// Full-screen modal showing the route map with pinch-to-zoom.
 class _RouteMapModal extends StatelessWidget {
-  const _RouteMapModal({required this.imageUrl});
+  const _RouteMapModal({required this.assetPath});
 
-  final String imageUrl;
+  final String assetPath;
 
   @override
   Widget build(BuildContext context) {
@@ -329,21 +304,10 @@ class _RouteMapModal extends StatelessWidget {
           child: InteractiveViewer(
             minScale: 1.0,
             maxScale: 5.0,
-            child: CachedNetworkImage(
-              imageUrl: imageUrl,
+            child: Image.asset(
+              assetPath,
               fit: BoxFit.contain,
-              fadeInDuration: Duration.zero,
-              fadeOutDuration: Duration.zero,
-              placeholder: (_, _) => const Center(
-                child: CircularProgressIndicator(color: AppColors.primary),
-              ),
-              errorWidget: (_, _, _) => const Center(
-                child: Icon(
-                  Icons.broken_image_outlined,
-                  color: AppColors.hintGrey,
-                  size: 48,
-                ),
-              ),
+              filterQuality: FilterQuality.high,
             ),
           ),
         ),

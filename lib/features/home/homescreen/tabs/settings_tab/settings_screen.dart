@@ -2,9 +2,14 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../../core/animations/screen_transitions.dart';
+import '../../../../../core/global_services/foreground_service.dart';
+import '../../../../../core/overlay/overlay_service.dart';
+import '../../../../../core/permissions/app_permission_service.dart';
 import '../../../../../core/shared_prefs/shared_prefs.dart';
 import '../../../../../core/firebase/firebase_client.dart';
 import '../../../../../core/theme/app_colors.dart';
+import '../../../../ride_tracking/presentation/ride_widgets.dart';
+import '../../../../ride_tracking/ride_controller.dart';
 import 'alarm_settings/alarm_card/alarm_dismissal.dart';
 import 'alarm_settings/alarm_card/alarm_sound_card.dart';
 import 'alarm_settings/alarm_card/alarm_vibration.dart';
@@ -14,7 +19,10 @@ import 'profile_avatar_service.dart';
 /// Settings screen using the app-wide monochrome card system.
 /// Uses the existing [AppColors] palette for all colors.
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+  const SettingsScreen({super.key, this.active = false, this.onLogout});
+
+  final bool active;
+  final Future<void> Function()? onLogout;
 
   // ── Derived palette from AppColors ─────────────────────────────────────
   static const Color _bg = AppColors.bg;
@@ -31,9 +39,12 @@ class SettingsScreen extends StatefulWidget {
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _SettingsScreenState extends State<SettingsScreen>
+    with WidgetsBindingObserver {
   String? _avatarUrl;
   bool _uploading = false;
+  Map<AppPermission, AppPermissionState> _permissionStates = const {};
+  bool _initialLoadScheduled = false;
 
   /// When false, the screen body is replaced by an empty container so the
   /// navigation transition doesn't need to composite the full widget tree.
@@ -42,7 +53,92 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadAvatar();
+    WidgetsBinding.instance.addObserver(this);
+    _scheduleInitialLoad();
+  }
+
+  @override
+  void didUpdateWidget(covariant SettingsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _scheduleInitialLoad();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && widget.active) {
+      _loadPermissionStates();
+    }
+  }
+
+  /// Firebase/profile image and permission-platform calls are deliberately
+  /// delayed until the tab slide finishes. Starting all of them in the first
+  /// Settings frame was the main source of the first-visit hitch.
+  void _scheduleInitialLoad() {
+    if (!widget.active ||
+        _initialLoadScheduled ||
+        _permissionStates.isNotEmpty) {
+      return;
+    }
+    _initialLoadScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await Future<void>.delayed(const Duration(milliseconds: 340));
+      if (!mounted || !widget.active) {
+        _initialLoadScheduled = false;
+        return;
+      }
+      _loadAvatar();
+      _loadPermissionStates();
+    });
+  }
+
+  Future<void> _loadPermissionStates() async {
+    final entries = await Future.wait(
+      AppPermission.values.map(
+        (permission) async => MapEntry(
+          permission,
+          await AppPermissionService.instance.stateFor(permission),
+        ),
+      ),
+    );
+    if (!mounted) return;
+    setState(() => _permissionStates = Map.fromEntries(entries));
+  }
+
+  Future<void> _setPermissionUsage(
+    AppPermission permission,
+    bool enabled,
+  ) async {
+    await AppPermissionService.instance.setAppEnabled(permission, enabled);
+    if (!enabled) {
+      switch (permission) {
+        case AppPermission.location:
+          await RideController.instance.disable();
+          await ProximityForegroundService.instance.stop();
+          break;
+        case AppPermission.overlay:
+          await OverlayService.instance.hide();
+          break;
+        case AppPermission.notifications:
+          // A foreground service is required to display an Android tracking
+          // notification, so end active tracking instead of leaving a stale
+          // notification visible after the user opts out.
+          await RideController.instance.disable();
+          await ProximityForegroundService.instance.stop();
+          break;
+        case AppPermission.exactAlarm:
+        case AppPermission.batteryOptimization:
+        case AppPermission.microphone:
+        case AppPermission.photoLibrary:
+          break;
+      }
+    }
+    await _loadPermissionStates();
   }
 
   Future<void> _loadAvatar() async {
@@ -179,6 +275,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ],
                     ),
                     const SizedBox(height: 24),
+                    const RideSettingsSection(),
+                    const SizedBox(height: 24),
                     // ── Notifications section ────────────────────────────────────
                     const _SectionTitle(title: 'Notifications'),
                     const SizedBox(height: 10),
@@ -202,30 +300,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 10),
                     _SettingsCard(
                       children: [
-                        _ToggleRow(
-                          label: 'Location',
-                          sub: 'Foreground & background',
-                          isOn: true,
+                        _permissionRow(AppPermission.location, 'Location'),
+                        _permissionRow(
+                          AppPermission.notifications,
+                          'Notifications',
                         ),
-                        _ToggleRow(label: 'Notifications', isOn: true),
-                        _ToggleRow(label: 'Alarm', isOn: true),
-                        _ToggleRow(
-                          label: 'Fullscreen',
-                          sub: 'Displaying over apps',
-                          isOn: true,
+                        _permissionRow(AppPermission.exactAlarm, 'Alarm'),
+                        _permissionRow(
+                          AppPermission.overlay,
+                          'Fullscreen',
+                          fallbackSub: 'Displaying over apps',
                         ),
-                        _ToggleRow(
-                          label: 'Battery optimization exemption',
-                          isOn: true,
+                        _permissionRow(
+                          AppPermission.batteryOptimization,
+                          'Battery optimization exemption',
                         ),
-                        _ToggleRow(label: 'Microphone', isOn: true),
-                        _ToggleRow(
-                          label: 'Photo library',
-                          sub: 'Camera access',
-                          isOn: true,
+                        _permissionRow(AppPermission.microphone, 'Microphone'),
+                        _permissionRow(
+                          AppPermission.photoLibrary,
+                          'Photo library',
                         ),
                       ],
                     ),
+                    if (_permissionStates.values.any(
+                      (state) => !state.systemGranted,
+                    )) ...[
+                      const SizedBox(height: 8),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 4),
+                        child: Text(
+                          'Enable a permission from the feature that needs it before you can toggle its app access.',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 11,
+                            color: SettingsScreen._inkSoft,
+                          ),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 24),
                     // ── About section ────────────────────────────────────────────
                     const _SectionTitle(title: 'About'),
@@ -252,7 +364,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 40),
+                    if (widget.onLogout != null) ...[
+                      const SizedBox(height: 24),
+                      _LogoutButton(onTap: widget.onLogout!),
+                    ],
+                    // Keep the action clear of the persistent bottom bar.
+                    const SizedBox(height: 120),
                   ],
                 ),
               )
@@ -266,6 +383,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final l = last.isNotEmpty ? last[0].toUpperCase() : '';
     if (f.isEmpty && l.isEmpty) return 'U';
     return '$f$l';
+  }
+
+  Widget _permissionRow(
+    AppPermission permission,
+    String label, {
+    String? fallbackSub,
+  }) {
+    final state = _permissionStates[permission];
+    final isGranted = state?.systemGranted ?? false;
+    final sub = !isGranted
+        ? 'Enable permission first to toggle'
+        : !(state?.appEnabled ?? false)
+        ? 'Off — Proximity will not use this permission'
+        : (state?.detail ?? fallbackSub);
+    return _ToggleRow(
+      label: label,
+      sub: sub,
+      isOn: state?.appEnabled ?? false,
+      enabled: isGranted,
+      onChanged: (value) => _setPermissionUsage(permission, value),
+    );
   }
 
   String _formatDate(DateTime date) {
@@ -425,7 +563,7 @@ class _ProfileCard extends StatelessWidget {
                               width: 62,
                               height: 62,
                               fit: BoxFit.cover,
-                              placeholder: (_, __) => Container(
+                              placeholder: (_, _) => Container(
                                 color: AppColors.surfaceMuted,
                                 child: const Center(
                                   child: SizedBox(
@@ -438,7 +576,7 @@ class _ProfileCard extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              errorWidget: (_, __, ___) =>
+                              errorWidget: (_, _, _) =>
                                   _defaultAvatar(initials),
                             )
                           : _defaultAvatar(initials),
@@ -563,6 +701,52 @@ class _SectionTitle extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(child: Container(height: 1, color: SettingsScreen._line)),
       ],
+    );
+  }
+}
+
+class _LogoutButton extends StatelessWidget {
+  const _LogoutButton({required this.onTap});
+
+  final Future<void> Function() onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surfaceHigh,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 15),
+          decoration: BoxDecoration(
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.logout_rounded,
+                size: 20,
+                color: AppColors.textPrimary,
+              ),
+              SizedBox(width: 10),
+              Text(
+                'Log out',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -703,25 +887,20 @@ class _ChevronRow extends StatelessWidget {
   }
 }
 
-class _ToggleRow extends StatefulWidget {
-  const _ToggleRow({required this.label, this.sub, required this.isOn});
+class _ToggleRow extends StatelessWidget {
+  const _ToggleRow({
+    required this.label,
+    this.sub,
+    required this.isOn,
+    this.enabled = true,
+    this.onChanged,
+  });
 
   final String label;
   final String? sub;
   final bool isOn;
-
-  @override
-  State<_ToggleRow> createState() => _ToggleRowState();
-}
-
-class _ToggleRowState extends State<_ToggleRow> {
-  late bool _value;
-
-  @override
-  void initState() {
-    super.initState();
-    _value = widget.isOn;
-  }
+  final bool enabled;
+  final ValueChanged<bool>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -734,22 +913,26 @@ class _ToggleRowState extends State<_ToggleRow> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  widget.label,
-                  style: const TextStyle(
+                  label,
+                  style: TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: SettingsScreen._ink,
+                    color: enabled
+                        ? SettingsScreen._ink
+                        : SettingsScreen._inkSoft.withValues(alpha: 0.65),
                   ),
                 ),
-                if (widget.sub != null) ...[
+                if (sub != null) ...[
                   const SizedBox(height: 2),
                   Text(
-                    widget.sub!,
-                    style: const TextStyle(
+                    sub!,
+                    style: TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 10.5,
-                      color: SettingsScreen._inkSoft,
+                      color: enabled
+                          ? SettingsScreen._inkSoft
+                          : SettingsScreen._inkSoft.withValues(alpha: 0.65),
                     ),
                   ),
                 ],
@@ -758,23 +941,27 @@ class _ToggleRowState extends State<_ToggleRow> {
           ),
           // Custom toggle
           GestureDetector(
-            onTap: () => setState(() => _value = !_value),
+            onTap: enabled ? () => onChanged?.call(!isOn) : null,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               width: 42,
               height: 24,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(999),
-                color: _value ? AppColors.primary : SettingsScreen._trackOff,
+                color: isOn && enabled
+                    ? AppColors.primary
+                    : SettingsScreen._trackOff,
               ),
               padding: const EdgeInsets.all(3),
-              alignment: _value ? Alignment.centerRight : Alignment.centerLeft,
+              alignment: isOn ? Alignment.centerRight : Alignment.centerLeft,
               child: Container(
                 width: 18,
                 height: 18,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.white,
+                  color: enabled
+                      ? AppColors.white
+                      : AppColors.white.withValues(alpha: 0.45),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.2),

@@ -7,7 +7,7 @@ import '../../../../../../core/global_services/foreground_service.dart';
 import '../../../../../../core/overlay/overlay_service.dart';
 import '../../../../../../core/theme/app_colors.dart';
 
-/// Displays the full route on a Mapbox map with a green polyline,
+/// Displays the full route on a Mapbox map with a high-contrast polyline,
 /// origin/destination pins, ETA + distance info card, and a back button.
 class PathScreen extends StatefulWidget {
   const PathScreen({
@@ -41,7 +41,6 @@ class PathScreen extends StatefulWidget {
 
 class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
   MapboxMap? _map;
-  bool _mapReady = false;
 
   static const String _routeSourceId = 'route-line-source';
   static const String _routeLayerId = 'route-line-layer';
@@ -54,6 +53,9 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
     ProximityForegroundService.instance.start(
       title: 'Navigating',
       text: '${widget.totalDistance} · ETA ${widget.totalEta}',
+      destinationLatitude: widget.destLat,
+      destinationLongitude: widget.destLng,
+      destinationName: 'Destination',
     );
     // Pre-load overlay data for when the user backgrounds the app.
     OverlayService.instance.update(
@@ -90,7 +92,6 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
   }
 
   void _onStyleLoaded(StyleLoadedEventData _) async {
-    setState(() => _mapReady = true);
     await _addRouteLine();
     await _fitCameraToBounds();
   }
@@ -117,7 +118,7 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
       LineLayer(
         id: _routeLayerId,
         sourceId: _routeSourceId,
-        lineColor: AppColors.primary.value,
+        lineColor: AppColors.white.toARGB32(),
         lineWidth: 5.0,
         lineJoin: LineJoin.ROUND,
         lineCap: LineCap.ROUND,
@@ -191,7 +192,7 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
               key: const ValueKey('path-map'),
               // ignore: experimental_member_use
               androidHostingMode: AndroidPlatformViewHostingMode.TLHC_HC,
-              styleUri: MapboxStyles.STANDARD,
+              styleUri: MapboxStyles.DARK,
               onMapCreated: _onMapCreated,
               onStyleLoadedListener: _onStyleLoaded,
             ),
@@ -207,7 +208,7 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: AppColors.white,
+                  color: AppColors.surfaceRaised,
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
@@ -221,7 +222,7 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
                   child: Icon(
                     Icons.chevron_left_rounded,
                     size: 26,
-                    color: AppColors.primary,
+                    color: AppColors.white,
                   ),
                 ),
               ),
@@ -236,7 +237,7 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               decoration: BoxDecoration(
-                color: AppColors.white,
+                color: AppColors.surfaceRaised,
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
@@ -253,11 +254,11 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.1),
+                      color: AppColors.surfaceHigh,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Center(
-                      child: Icon(modeIcon, size: 22, color: AppColors.primary),
+                      child: Icon(modeIcon, size: 22, color: AppColors.white),
                     ),
                   ),
                   const SizedBox(width: 14),

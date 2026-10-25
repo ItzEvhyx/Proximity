@@ -4,15 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
-import 'package:video_player/video_player.dart';
 
-import 'core/animations/screen_transitions.dart';
 import 'core/config/env.dart';
 import 'core/database/app_database.dart';
 import 'core/database/settings_sync.dart';
 import 'core/global_services/cloudinary_services.dart';
 import 'core/global_services/foreground_service.dart';
-import 'core/network/network_service.dart';
 import 'core/overlay/overlay_service.dart';
 import 'core/overlay/overlay_widget.dart';
 import 'core/router/app_router.dart';
@@ -21,9 +18,7 @@ import 'core/shared_prefs/shared_prefs.dart';
 import 'core/firebase/firebase_client.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
-import 'features/login/login_screen.dart';
-import 'features/network_error/network_error_screen.dart';
-import 'features/splashscreen/splashscreen.dart';
+import 'features/ride_tracking/data/station_repository.dart';
 
 /// Overlay entry point — called by flutter_overlay_window when the system
 /// overlay is shown. Must be top-level and annotated with @pragma.
@@ -51,9 +46,8 @@ Future<void> main() async {
   runApp(const ProximityApp());
 }
 
-/// Root widget that performs async initialization while showing a plain
-/// colored screen (matching the native splash). Once ready it hands off to the
-/// splash video screen.
+/// Root widget that performs required initialization before showing the first
+/// app route. There is no Flutter splash screen or launch-video delay.
 class ProximityApp extends StatefulWidget {
   const ProximityApp({super.key});
 
@@ -62,7 +56,7 @@ class ProximityApp extends StatefulWidget {
 }
 
 class _ProximityAppState extends State<ProximityApp> {
-  late final Future<VideoPlayerController?> _initFuture;
+  late final Future<void> _initFuture;
 
   @override
   void initState() {
@@ -70,12 +64,11 @@ class _ProximityAppState extends State<ProximityApp> {
     _initFuture = _bootstrap();
   }
 
-  /// Runs all heavy initialization that used to live in main(). Because the
-  /// widget tree is already mounted, Flutter has rendered a first frame and
-  /// the OS won't consider the app stuck.
-  Future<VideoPlayerController?> _bootstrap() async {
+  /// Runs the required initialization after Flutter has mounted its first
+  /// frame, so platform setup cannot block the app process at launch.
+  Future<void> _bootstrap() async {
     // Preferences are required for the initial route, but do not let an
-    // optional service, permission prompt, or video decoder hold up launch.
+    // optional service or permission prompt hold up launch.
     await AppPrefs.init();
 
     // .env.local is optional at runtime. Cloudinary has a delivery fallback
@@ -102,10 +95,6 @@ class _ProximityAppState extends State<ProximityApp> {
       MapboxOptions.setAccessToken(mapboxToken);
     }
 
-    final splashController = VideoPlayerController.asset(
-      'public/assets/splash/splashscreen.mp4',
-    );
-
     // Auth is required by the first interactive screen. Initializing it here
     // removes a race where LoginScreen could be shown before Firebase had a
     // default app, while the first Flutter frame still appears immediately.
@@ -121,21 +110,6 @@ class _ProximityAppState extends State<ProximityApp> {
     // deliberately never requested during launch. They are requested only
     // when the user starts the feature that needs them.
     unawaited(_finishStartup());
-
-    try {
-      await splashController.initialize().timeout(const Duration(seconds: 5));
-      await splashController.setVolume(1.0);
-    } catch (_) {
-      // Continue with a lightweight black fallback if the bundled video
-      // cannot be decoded on this device.
-      splashController.dispose();
-      return null;
-    }
-
-    // Warm up the bus Lottie in the background while the splash video plays.
-    BusAnimation.preload();
-
-    return splashController;
   }
 
   /// Work that improves the app after it is visible, but must never block the
@@ -148,6 +122,9 @@ class _ProximityAppState extends State<ProximityApp> {
       await SettingsSync.instance.pushToSqlite();
       if (UserSession.instance.isLoggedIn) {
         unawaited(SettingsSync.instance.pullFromCloud());
+        // Transit data is version-checked once at startup. The repository
+        // refuses to touch Firestore while a ride session is active.
+        unawaited(StationRepository().syncFromFirebaseIfChanged());
       }
     } catch (_) {
       // SQLite is an enhancement; features retain their SharedPreferences
@@ -169,40 +146,22 @@ class _ProximityAppState extends State<ProximityApp> {
       theme: AppTheme.dark,
       darkTheme: AppTheme.dark,
       themeMode: ThemeMode.dark,
-      // A final presentation guard for bitmap assets supplied by Cloudinary
-      // or bundled with the app. Native Mapbox styling is configured separately.
-      builder: (context, child) => ColorFiltered(
-        colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.saturation),
-        child: child ?? const SizedBox.shrink(),
-      ),
       navigatorKey: navigatorKey,
-      home: FutureBuilder<VideoPlayerController?>(
+      home: FutureBuilder<void>(
         future: _initFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            // While initializing, show a plain screen matching the native
-            // splash color so the transition is seamless.
+            // Required state is still loading; keep the first frame plain and
+            // immediately move to the real route when it is available.
             return const Scaffold(backgroundColor: AppColors.bg);
           }
 
-          final controller = snapshot.data;
-          return SplashScreen(
-            controller: controller,
-            onFinished: () async {
-              final online = await NetworkService.instance.hasConnection();
-              navigatorKey.currentState?.pushReplacement(
-                ScreenTransitions.fade(
-                  online ? AppRouter.afterSplash() : const NetworkErrorScreen(),
-                ),
-              );
-            },
-          );
+          return AppRouter.afterSplash();
         },
       ),
     );
   }
 }
 
-/// Global navigator key so the splash can trigger navigation once its
-/// video finishes playing.
+/// Global navigator key used by features that navigate outside a widget tree.
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();

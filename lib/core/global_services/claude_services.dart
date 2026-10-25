@@ -129,11 +129,10 @@ class ClaudeService {
     // Extract the full route geometry for map rendering.
     final geometryJson = route['geometry'] as Map<String, dynamic>;
     final rawCoords = geometryJson['coordinates'] as List;
-    final geometry = rawCoords
-        .map<List<double>>(
-          (c) => [(c as List)[0] as double, (c as List)[1] as double],
-        )
-        .toList();
+    final geometry = rawCoords.map<List<double>>((coordinate) {
+      final values = coordinate as List;
+      return [(values[0] as num).toDouble(), (values[1] as num).toDouble()];
+    }).toList();
 
     // Convert Mapbox steps into our RouteStep format.
     final routeSteps = _convertMapboxSteps(steps);

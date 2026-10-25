@@ -27,18 +27,20 @@ const _soundAssets = {
 
 /// Fullscreen alarm screen shown when the user enters proximity of their
 /// destination. Plays alarm + vibration, shows ETA/distance, and requires
-/// the user to perform their chosen dismiss method to stop.
+/// the user to perform their chosen snooze method before they can leave it.
 class AlarmDismissalScreen extends StatefulWidget {
   const AlarmDismissalScreen({
     super.key,
     required this.distance,
     required this.eta,
-    required this.onDismissed,
+    required this.destinationName,
+    required this.onSnoozed,
   });
 
   final String distance;
   final String eta;
-  final VoidCallback onDismissed;
+  final String destinationName;
+  final VoidCallback onSnoozed;
 
   @override
   State<AlarmDismissalScreen> createState() => _AlarmDismissalScreenState();
@@ -46,7 +48,7 @@ class AlarmDismissalScreen extends StatefulWidget {
 
 class _AlarmDismissalScreenState extends State<AlarmDismissalScreen> {
   final AudioPlayer _player = AudioPlayer();
-  bool _dismissed = false;
+  bool _snoozed = false;
 
   @override
   void initState() {
@@ -58,9 +60,9 @@ class _AlarmDismissalScreenState extends State<AlarmDismissalScreen> {
     _player.playerStateStream.listen((state) {
       if (state.processingState == ProcessingState.completed &&
           mounted &&
-          !_dismissed) {
+          !_snoozed) {
         Future.delayed(const Duration(seconds: 1), () {
-          if (mounted && !_dismissed) {
+          if (mounted && !_snoozed) {
             _player.seek(Duration.zero);
             _player.play();
           }
@@ -82,15 +84,15 @@ class _AlarmDismissalScreenState extends State<AlarmDismissalScreen> {
     } catch (_) {}
   }
 
-  void _onDismissed() {
-    if (_dismissed) return;
-    setState(() => _dismissed = true);
+  void _onSnoozed() {
+    if (_snoozed) return;
+    setState(() => _snoozed = true);
     _player.stop();
     VibrationService.instance.stop();
     VolumeService.instance.restoreVolume();
     // Restore normal system UI mode.
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    widget.onDismissed();
+    widget.onSnoozed();
   }
 
   @override
@@ -133,9 +135,9 @@ class _AlarmDismissalScreenState extends State<AlarmDismissalScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                // ── Wake up! ───────────────────────────────────────────────
+                // ── Proximity alarm ────────────────────────────────────────
                 const Text(
-                  'Wake up!',
+                  'You are close!',
                   style: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 28,
@@ -145,7 +147,7 @@ class _AlarmDismissalScreenState extends State<AlarmDismissalScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  "You're close to your stop. Grab\nyour things and get ready to hop off.",
+                  'Near ${widget.destinationName}. Complete your snooze method\nto silence this alarm for 5 minutes.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: 'Inter',
@@ -166,13 +168,27 @@ class _AlarmDismissalScreenState extends State<AlarmDismissalScreen> {
                   ],
                 ),
                 const Spacer(flex: 2),
-                // ── Dismiss method widget ──────────────────────────────────
+                // ── The method selected in Settings ─────────────────────────
+                Text(
+                  dismissMethod == 'slide'
+                      ? 'Slide to snooze'
+                      : dismissMethod == 'shake'
+                      ? 'Shake to snooze'
+                      : 'Solve to snooze',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.white.withValues(alpha: 0.95),
+                  ),
+                ),
+                const SizedBox(height: 14),
                 if (dismissMethod == 'slide')
-                  _SlideDismiss(onDismissed: _onDismissed)
+                  _SlideDismiss(onDismissed: _onSnoozed)
                 else if (dismissMethod == 'shake')
-                  _ShakeDismiss(onDismissed: _onDismissed)
+                  _ShakeDismiss(onDismissed: _onSnoozed)
                 else
-                  _SolveDismiss(onDismissed: _onDismissed),
+                  _SolveDismiss(onDismissed: _onSnoozed),
                 const Spacer(flex: 1),
               ],
             ),

@@ -66,8 +66,12 @@ class _Pill extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
         decoration: BoxDecoration(
-          color: selected ? AppColors.textPrimary : Colors.transparent,
+          color: selected ? AppColors.surfaceHigh : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected ? AppColors.textPrimary : Colors.transparent,
+            width: 1.5,
+          ),
           boxShadow: selected
               ? const [
                   BoxShadow(
@@ -87,7 +91,7 @@ class _Pill extends StatelessWidget {
             fontSize: 11.5,
             fontWeight: FontWeight.w700,
             height: 1.2,
-            color: selected ? AppColors.onLight : AppColors.textSecondary,
+            color: AppColors.textPrimary,
           ),
         ),
       ),
